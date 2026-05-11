@@ -1,21 +1,64 @@
 // Reusable visual primitives
 
-export function TurtleMark({ size = 26, color = "currentColor" }) {
+export function TurtleMark({ size = 26, color = "currentColor", decorative = false }) {
   return (
-    <svg width={size} height={size * (52/60)} viewBox="0 0 60 52" fill="none" style={{display:'block'}}>
-      <ellipse cx="27" cy="27" rx="16" ry="13" fill={color}/>
-      <ellipse cx="27" cy="19.5" rx="5.5" ry="3.8" fill="none" stroke="var(--bg)" strokeWidth="0.9" opacity="0.6"/>
-      <ellipse cx="27" cy="27"   rx="6"   ry="4.3" fill="none" stroke="var(--bg)" strokeWidth="0.9" opacity="0.6"/>
-      <ellipse cx="27" cy="34.5" rx="5.5" ry="3.8" fill="none" stroke="var(--bg)" strokeWidth="0.9" opacity="0.6"/>
-      <path d="M21.5 19.5 Q16 23 16 27 Q16 31 21.5 34.5" stroke="var(--bg)" strokeWidth="0.8" fill="none" opacity="0.55"/>
-      <path d="M32.5 19.5 Q39 23 39 27 Q39 31 32.5 34.5" stroke="var(--bg)" strokeWidth="0.8" fill="none" opacity="0.55"/>
-      <ellipse cx="46.5" cy="25" rx="6.5" ry="5.5" fill={color}/>
-      <circle cx="49" cy="22.5" r="1.3" fill="var(--bg)" opacity="0.7"/>
-      <path d="M11 29 Q5 33.5 7.5 38.5" stroke={color} strokeWidth="3" strokeLinecap="round"/>
-      <ellipse cx="18" cy="39" rx="5.5" ry="3" fill={color} transform="rotate(-28 18 39)"/>
-      <ellipse cx="36" cy="39" rx="5.5" ry="3" fill={color} transform="rotate(28 36 39)"/>
-      <ellipse cx="18" cy="15" rx="5.5" ry="3" fill={color} transform="rotate(28 18 15)"/>
-      <ellipse cx="36" cy="15" rx="5.5" ry="3" fill={color} transform="rotate(-28 36 15)"/>
+    <svg
+      width={size}
+      height={size * (56/72)}
+      viewBox="0 0 72 56"
+      fill="none"
+      role={decorative ? undefined : 'img'}
+      aria-label={decorative ? undefined : 'MoonTurtle mark'}
+      aria-hidden={decorative ? 'true' : undefined}
+      focusable="false"
+      style={{display:'block'}}
+    >
+      <path
+        d="M16.5 29.4 C16.5 18.6 26.2 10.2 40.2 10.2 C53.4 10.2 62.5 18 62.5 28.1 C62.5 38.8 53 46.1 39.8 46.1 C26 46.1 16.5 39.2 16.5 29.4 Z"
+        fill={color}
+      />
+      <path
+        d="M59.8 27.6 C62.4 22.4 66.9 21.6 69.2 25.2 C71.5 28.8 69.2 34 64.3 35.3 C62 35.9 59.9 34.8 58.6 32.7"
+        fill={color}
+      />
+      <path
+        d="M17.7 30.6 C12.5 32.3 8 35.5 5.8 40.3"
+        stroke={color}
+        strokeWidth="3.8"
+        strokeLinecap="round"
+      />
+      <ellipse cx="23.9" cy="45.3" rx="6.3" ry="3.5" fill={color} transform="rotate(-24 23.9 45.3)"/>
+      <ellipse cx="49.2" cy="45" rx="6.1" ry="3.4" fill={color} transform="rotate(24 49.2 45)"/>
+      <ellipse cx="24.4" cy="10.8" rx="6.3" ry="3.5" fill={color} transform="rotate(24 24.4 10.8)"/>
+      <ellipse cx="50" cy="11.1" rx="6.1" ry="3.4" fill={color} transform="rotate(-24 50 11.1)"/>
+      <circle cx="66.4" cy="26.7" r="1.15" fill="var(--paper)" opacity="0.86"/>
+      <path
+        d="M41.1 15.5 C35.3 17.5 31.3 22.5 31.3 28.2 C31.3 34 35.2 38.8 41 40.6 C36.7 41.2 28 38.3 28 28.2 C28 18.5 36.6 14.6 41.1 15.5 Z"
+        fill="var(--paper)"
+        opacity="0.74"
+      />
+      <path
+        d="M38.5 14.8 C49 17.1 56 22.2 57.8 29.2 M21.5 29.3 C24.3 20.8 31.1 15.9 40.3 14.4 M22.5 33.1 C28.7 40.2 38.6 43.1 51 39.6"
+        stroke="var(--paper)"
+        strokeWidth="0.95"
+        strokeLinecap="round"
+        opacity="0.54"
+      />
+      <path
+        d="M36.7 15.1 C34 21.3 34.1 34.7 37 42.1 M47 17.5 C43.7 23.1 43.1 34.1 46.1 40.7"
+        stroke="var(--paper)"
+        strokeWidth="0.8"
+        strokeLinecap="round"
+        opacity="0.46"
+      />
+      {[
+        [33.2, 18.7], [39.4, 18], [45.8, 20],
+        [28.7, 24.1], [36.2, 25.1], [43.7, 25.2], [51, 27.1],
+        [29.6, 33.1], [36.9, 31.6], [44.8, 32.4],
+        [34.1, 38.2], [40.4, 38.9], [47.8, 37.1],
+      ].map(([cx, cy]) => (
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="0.9" fill="var(--paper)" opacity="0.68"/>
+      ))}
     </svg>
   );
 }
@@ -23,7 +66,7 @@ export function TurtleMark({ size = 26, color = "currentColor" }) {
 export function Wordmark({ small }) {
   return (
     <div style={{display:'flex', alignItems:'center', gap:8}}>
-      <span style={{color:'var(--terracotta)'}}><TurtleMark size={small?20:24}/></span>
+      <span style={{color:'var(--terracotta)'}}><TurtleMark size={small?23:27} decorative/></span>
       <span style={{
         fontFamily:'var(--serif-sc)',
         fontSize: small? 13:15,

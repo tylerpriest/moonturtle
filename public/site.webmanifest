@@ -1,0 +1,17 @@
+{
+  "name": "MoonTurtle",
+  "short_name": "MoonTurtle",
+  "description": "A quiet true-sky sidereal reading app.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5ecdb",
+  "theme_color": "#f5ecdb",
+  "icons": [
+    {
+      "src": "/moonturtle-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
