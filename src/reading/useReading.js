@@ -33,6 +33,10 @@ function buildJournalEntry(user, sky, reading) {
   };
 }
 
+function cachedReadingIsCurrent(reading) {
+  return Boolean(reading?.sourceDetail?.systems?.length);
+}
+
 export function useReading(user, settings) {
   const [state, setState] = useState({
     status: user ? 'calculating' : 'idle',
@@ -76,7 +80,7 @@ export function useReading(user, settings) {
         const cacheMode = computeInput.aiMode;
         const cached = getCachedReading(user.birthHash, sky.localDateKey, cacheMode);
 
-        if (cached) {
+        if (cached && cachedReadingIsCurrent(cached)) {
           if (!alive) return;
           setState({
             status: 'ready',
