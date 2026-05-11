@@ -259,7 +259,8 @@ Note: Phase 0 restructures the existing prototype into module folders. Paths bel
 - Mean Node vs True Node for the lunar nodes? (Convention: Mean for Vedic, True for modern Western. Document the choice in Method.)
 - Bring the named 13-Moon Calendar back as a Phase 2 layer on top of real astronomy, or drop entirely? (User said "actual moons" — I read that as drop for now; revisit if/when they ask.)
 - Should we expose a "long-form mode" toggle in v1, or keep the curated UI as the only surface until Phase 2? (Leaning Phase 2 — curated surface is what makes MoonTurtle distinct.)
-- Where to store the master prompt's third "daily readings" sibling prompt the user mentioned but couldn't find? Reserve a slot at `docs/master-prompt-daily.md` for when it surfaces.
+- The second master prompt (multi-system profile) surfaced 11 May 2026 and lives at `docs/master-prompt-systems.md`. It's a different product surface (profile, not daily) — candidate for Phase 3+. Suggested system additions documented at `docs/additional-systems.md`.
+- If a third sibling prompt for "daily readings" specifically surfaces, reserve `docs/master-prompt-daily.md`.
 
 ## Appendix — Other open-source libraries (reference only, not adopted)
 
