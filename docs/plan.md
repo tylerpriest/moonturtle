@@ -105,22 +105,55 @@ docs/
 
 ## Architecture (locked in)
 
-### Astronomy — true-sky sidereal midpoint method (Mastering the Zodiac framework)
+### Astronomy — true-sky sidereal from IAU constellation boundaries (open-source, built ourselves)
 
-**Correction from the earlier draft:** the verbatim master prompt (`docs/master-prompt.md`) specifies the **Mastering the Zodiac true-sky sidereal midpoint method** — unequal sign lengths matching actual constellation sizes, including **Ophiuchus** (Nov 29 – Dec 18). This is NOT equal-sign sidereal with Lahiri ayanamsa. The previously planned approach ("subtract Lahiri ayanamsa from tropical") would produce equal-sign sidereal and silently violate the master prompt's instruction *"Do not silently switch to standard equal-sign sidereal astrology."*
+The master prompt requires **true-sky sidereal** with unequal constellation sizes including **Ophiuchus**. The MTZ project publishes one set of boundaries via their "midpoint method," but we don't need to copy them — the underlying data is **open**.
 
-**Open task for the next agent — must resolve before Phase 1 astronomy.js is written:**
+**Approach: compute it ourselves from IAU data.**
 
-- **Option A** (recommended starting point): Port MTZ's midpoint constellation boundaries into a JS lookup table (~13 entries with degree ranges). Compute absolute ecliptic longitude with `astronomy-engine`, then classify into the MTZ sign by table lookup. Validate against the seed users in `docs/seed-users.md`.
-- **Option B:** Use IAU constellation boundaries projected onto the ecliptic. More astronomically rigorous but the resulting boundaries may not match MTZ's exact midpoint scheme. Check both against MTZ's own dates page.
-- **Option C:** Self-host an MTZ-compatible API. None verified to exist as of May 2026; check `Astrologer-API` and similar before assuming.
-- **Option D:** Ship equal-sign sidereal with explicit UI disclosure. This violates the master prompt's instruction but is the fastest path to MVP. If chosen, the Method screen must explicitly state "this app uses equal-sign sidereal, not true-sky midpoint" and offer the screenshot-upload fallback for users who want true-sky.
+The IAU constellation boundaries were defined in 1930 by Eugène Delporte. They are public-domain, well-documented, and bundled with Stellarium, Skyfield, Astropy, and other open astronomy projects. Combined with standard ecliptic geometry, they give us a fully open and reproducible true-sky sidereal system. See `src/domain/zodiac-boundaries.md` for the design note.
 
-**Libraries still useful regardless of approach:**
-- **`astronomy-engine`** (Don Cross, MIT, ~35KB gzip, pure JS) — Sun/Moon/planet absolute ecliptic longitudes, lunar phase, illumination, moonrise/moonset. Provides the raw input.
+**Algorithm (entirely in pure JS, no external data shipped beyond what's already in `astronomy-engine`):**
+
+1. Compute absolute ecliptic longitude of the body with `astronomy-engine`.
+2. Convert (ecliptic longitude, ecliptic latitude=0) → equatorial (RA, Dec) using standard rotation.
+3. Call `Astronomy.Constellation(ra, dec)` — `astronomy-engine` has a built-in IAU constellation lookup.
+4. Map the IAU constellation symbol (e.g. `Psc`, `Sco`) to its zodiac name. The 12 standard zodiac constellations + Ophiuchus are the 13 we care about; bodies that fall outside (which shouldn't happen on the ecliptic, but worth handling) get a fallback.
+
+**Boundary convention (transparent, our choice — document and defend):**
+
+Because IAU constellations overlap on the ecliptic at different declinations, we have to pick a convention for "which constellation owns this ecliptic longitude." Pre-compute once, ship the result.
+
+```js
+// Build-time, generates src/domain/zodiac-boundaries.json (~13 rows)
+function buildBoundaries() {
+  const boundaries = [];
+  let prev = null;
+  for (let lon = 0; lon < 360; lon += 0.01) {  // 0.01° resolution
+    const sign = trueSkyConstellation(lon);
+    if (sign !== prev) {
+      boundaries.push({ sign, startDeg: lon });
+      prev = sign;
+    }
+  }
+  return boundaries;
+}
+```
+
+This is **first-crossing convention**: a constellation owns ecliptic longitudes from the moment the ecliptic enters its IAU polygon. Other conventions (centroid-time, midpoint) are valid alternatives — if we ever want to switch, it's a one-function change.
+
+**Why this beats any approach that depends on MTZ:**
+1. **Open and reproducible.** Anyone can re-run our build script and get the same boundaries.
+2. **Honestly framed.** The Method screen can say *"true-sky sidereal via IAU 1930 constellation boundaries, first-crossing convention on the ecliptic"* — exact and citable.
+3. **No third-party dependency.** Doesn't break if MTZ changes their methodology, doesn't require licensing, doesn't risk being a copy.
+4. **Aligned with the master prompt.** Re-read the verbatim: *"ideally similar to the Mastering the Zodiac true sidereal midpoint method"* — *similar to*, not *copied from*. MTZ is one valid approach. We do our own and use MTZ as a sanity-check reference, not a data source.
+5. **Trivially extensible.** Once we have the IAU-projection pipeline, switching boundary conventions or adding "deep constellation" overlays (Sabian-style degree symbols, fixed stars) is the same machinery.
+
+**Libraries:**
+- **`astronomy-engine`** (Don Cross, MIT, ~35KB gzip, pure JS) — provides ecliptic longitudes, ecliptic-to-equatorial conversion, and the IAU `Constellation(ra, dec)` lookup. Everything we need.
 - **`circular-natal-horoscope-js`** (MIT, ~25KB gzip) — house cusps. **Use Placidus** (the Ali exemplar uses Placidus; the master prompt requires stating which house system is in use).
 
-**Regression check (mandatory before Phase 1 ships):** the astronomy must reproduce both seed users' placements from `docs/seed-users.md` within ±1°. The Ali check is particularly diagnostic because her Sun sits near the Gemini boundary; MTZ midpoint places it firmly in Gemini, equal-sign sidereal may differ.
+**Sanity check before Phase 1 ships:** run the boundary generator, compare to MTZ's published date table on their website. Expect agreement within 1-2 days for sign-ingress dates. Run the seed-user regression at `docs/seed-users.md` — both Tyler and Ali must come out within ±1° of expected sidereal placements. Ali's Sun near the Gemini end is the diagnostic case.
 
 ### Reading engine — Claude Opus 4.7 via Cloudflare Worker
 - **Model:** `claude-opus-4-7`. Voice control is the product; Sonnet won't hold the knife-edge between contemplation and prescription.

@@ -26,18 +26,11 @@ The prompt specifies:
 > Do not silently switch to standard equal-sign sidereal astrology.
 > Do not use twelve equal 30-degree signs unless you clearly state why.
 
-This is **not Lahiri ayanamsa with equal signs**. It is the MTZ midpoint method:
-- 13 constellations (12 + Ophiuchus, Nov 29 – Dec 18)
-- Unequal sign lengths matching actual constellation boundaries
-- Midpoint-based ecliptic boundaries (see [masteringthezodiac.com](https://masteringthezodiac.com/sidereal-astrology-dates))
+Key word: *"ideally similar to"*. MTZ is one valid implementation of true-sky sidereal. The requirement is the **framework** — unequal constellation-based signs including Ophiuchus — not MTZ's specific midpoint boundaries.
 
-**The plan's astronomy library choice (astronomy-engine + circular-natal-horoscope-js + Lahiri ayanamsa) is insufficient.** Lahiri produces equal-sign sidereal placements. We need either:
-1. Port MTZ's midpoint boundaries into our own ayanamsa-equivalent table, OR
-2. Use an MTZ-compatible library (none exist as of May 2026; check before Phase 1), OR
-3. Self-host an `Astrologer-API` instance or similar that supports MTZ, OR
-4. Compute true-constellation membership from absolute ecliptic longitude using a constellation-boundary lookup (IAU constellation boundaries projected onto the ecliptic).
+**Our approach: compute it ourselves from open data.** Use the IAU 1930 constellation boundaries (public domain, bundled with `astronomy-engine`) and project them onto the ecliptic. This gives us a fully open, reproducible true-sky sidereal system with no third-party dependency.
 
-**Open task for next agent:** decide and document which approach. See `docs/seed-users.md` for the placements Phase-1 astronomy must reproduce.
+See `docs/plan.md` § Astronomy and `src/domain/zodiac-boundaries.md` for the algorithm and design note. MTZ becomes a sanity-check reference, not a data source.
 
 ---
 
