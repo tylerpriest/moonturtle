@@ -1,3 +1,5 @@
+import { SYMBOLIC_LEXICON } from '../../reading/lexicon/index.js';
+
 function MethodSection({ num, title, body }) {
   return (
     <div style={{display:'grid', gridTemplateColumns:'40px 1fr', gap:16, marginBottom:22}}>
@@ -7,6 +9,29 @@ function MethodSection({ num, title, body }) {
       <div>
         <div className="h-card" style={{marginBottom:6}}>{title}</div>
         <p className="body-prose" style={{fontSize:15}}>{body}</p>
+      </div>
+    </div>
+  );
+}
+
+function SymbolicSources() {
+  const systems = Object.values(SYMBOLIC_LEXICON.systems);
+  return (
+    <div className="card" style={{padding:'20px 20px 18px'}}>
+      <div className="section-label">Interpretive Sources</div>
+      <h2 className="h-card" style={{fontSize:19, marginBottom:6}}>The lexicon is named.</h2>
+      <p className="body-prose" style={{fontSize:15, marginBottom:14}}>
+        Local readings use MoonTurtle's built-in symbolic lexicon. The sky positions are calculated; the meanings are authored from the systems below, and the app names them instead of treating them as objective fact.
+      </p>
+      <div style={{display:'flex', flexDirection:'column', gap:10}}>
+        {systems.map((system) => (
+          <div key={system.label} style={{borderTop:'1px solid var(--hairline)', paddingTop:10}}>
+            <div className="h-card" style={{fontSize:16}}>{system.label}</div>
+            <p className="meta" style={{marginTop:3, lineHeight:1.45, letterSpacing:'0.03em'}}>
+              {system.role}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -176,6 +201,10 @@ export function MethodScreen({ settings, state, onSettingsChange }) {
 
       <div style={{height:24}}/>
 
+      <SymbolicSources/>
+
+      <div style={{height:24}}/>
+
       <MethodSection
         num="01"
         title="This is not fatalism."
@@ -184,17 +213,17 @@ export function MethodScreen({ settings, state, onSettingsChange }) {
       <MethodSection
         num="02"
         title="Astronomy and interpretation are separate."
-        body="The numbers (positions, phases, illumination) are calculated with open-source astronomy tools. The reading on top of those numbers is a symbolic layer — a way of speaking, not a prediction."
+        body="The numbers (positions, phases, illumination) are calculated with open-source astronomy tools. The reading on top is symbolic interpretation, not proof or prediction."
       />
       <MethodSection
         num="03"
         title="Your current sky is calculated automatically."
-        body="Where and when you are now — handled by your device. The app reads the sky through IAU constellation boundaries projected onto the ecliptic, using unequal true-sky signs, not the calendar zodiac."
+        body="Where and when you are now is handled by your device. The app reads the sky through IAU constellation boundaries projected onto the ecliptic, using unequal true-sky signs, not the calendar zodiac."
       />
       <MethodSection
         num="04"
-        title="Interpretation comes from symbolic grammar, not objective fact."
-        body={"When the app says \"Mars in Pisces wants devotional action,\" it's drawing from a long symbolic vocabulary. Treat it as poetry with structure, not data with destiny."}
+        title="Interpretation comes from named systems."
+        body={"When the app says \"Mars in Pisces wants devotional action,\" it is drawing from Western astrology, lunar-cycle practice, somatic reflection, and MoonTurtle's editorial lexicon. Those systems are interpretive lenses, not astronomy itself."}
       />
       <MethodSection
         num="05"

@@ -78,6 +78,44 @@ function ListCard({ title, color, items, marker = 'dot' }) {
   );
 }
 
+function sourceLabel(reading) {
+  if (reading?.sourceDetail?.label) return reading.sourceDetail.label;
+  if (reading?.source === 'local-symbolic-engine') return 'Local symbolic engine';
+  if (reading?.providerAttempted) return 'AI synthesis';
+  return 'Reading engine';
+}
+
+function ReadingSource({ reading, fromCache }) {
+  const detail = reading?.sourceDetail;
+  const systems = detail?.systems ?? [];
+  return (
+    <div style={{marginTop:14, paddingTop:12, borderTop:'1px solid var(--hairline)'}}>
+      <div className="meta">
+        {fromCache ? 'Saved for today' : 'Written for today'} · {sourceLabel(reading)}
+      </div>
+      {detail && (
+        <details style={{marginTop:8}}>
+          <summary className="meta" style={{cursor:'pointer', color:'var(--terracotta)'}}>
+            Why this reading?
+          </summary>
+          <p className="meta" style={{marginTop:8, lineHeight:1.45, letterSpacing:'0.03em'}}>
+            {detail.caveat}
+          </p>
+          {systems.length > 0 && (
+            <div style={{display:'flex', flexWrap:'wrap', gap:6, marginTop:9}}>
+              {systems.map((system) => (
+                <span key={system} className="chip" style={{fontSize:9, padding:'4px 7px'}}>
+                  {system}
+                </span>
+              ))}
+            </div>
+          )}
+        </details>
+      )}
+    </div>
+  );
+}
+
 export function TodayScreen({ state, user, onTab }) {
   const isReady = state?.status === 'ready' && state.sky && state.reading;
   const name = user?.displayName || state?.natal?.user?.name || 'there';
@@ -117,9 +155,7 @@ export function TodayScreen({ state, user, onTab }) {
               {state.reading.headline}
             </h1>
             <p className="body-prose">{state.reading.body}</p>
-            <div className="meta" style={{marginTop:14}}>
-              {state.fromCache ? 'Saved for today' : 'Written for today'}
-            </div>
+            <ReadingSource reading={state.reading} fromCache={state.fromCache}/>
           </div>
 
           <OrnamentDiv/>

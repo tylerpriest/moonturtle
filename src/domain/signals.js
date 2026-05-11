@@ -106,6 +106,7 @@ export function rankSignals(natalChart, currentSky) {
         transitingSign: transiting.sign,
         natalTarget: natalName,
         natalSign: natal.sign,
+        natalHouse: natal.house ?? null,
         aspect: aspect.name,
         orb: Number(aspect.orb.toFixed(2)),
         score,
