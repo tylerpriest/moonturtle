@@ -6,24 +6,13 @@ import { DEMO_USER } from '../../io/storage.js';
 
 function InputField({ label, hint, ...props }) {
   return (
-    <label style={{display:'block', marginBottom:18}}>
-      <span className="eyebrow" style={{display:'block', marginBottom:6}}>{label}</span>
+    <label className="onboard-field">
+      <span className="eyebrow">{label}</span>
       <input
         {...props}
-        style={{
-          width:'100%',
-          fontFamily:'var(--serif)',
-          fontSize:19,
-          color:'var(--ink)',
-          background:'transparent',
-          border:'none',
-          borderBottom:'1px solid var(--hairline-strong)',
-          padding:'0 0 8px',
-          outline:'none',
-        }}
       />
       {hint && (
-        <span className="meta" style={{display:'block', marginTop:6, fontFamily:'var(--serif)', fontStyle:'italic', fontSize:13, color:'var(--ink-mute)'}}>{hint}</span>
+        <span className="meta onboard-field-hint">{hint}</span>
       )}
     </label>
   );
@@ -43,7 +32,7 @@ function ManualPlaceButton({ place, onClick, children }) {
       type="button"
       className="btn btn-ghost"
       onClick={onClick}
-      style={{textAlign:'left', letterSpacing:'0.08em', lineHeight:1.35, marginTop:10}}
+      style={{textAlign:'left', letterSpacing:'0.08em', lineHeight:1.35, marginTop:8, padding:'11px 14px', fontSize:11}}
     >
       {children ?? place.name}
     </button>
@@ -94,23 +83,23 @@ export function BirthSetup({ onNext }) {
 
   return (
     <div className="onboard-shell">
-      <div style={{padding:'46px 30px 34px', position:'relative', flex:1}}>
-        <div style={{position:'absolute', top:50, right:14}}>
+      <div className="onboard-panel onboard-panel-birth">
+        <div style={{position:'absolute', top:42, right:14}}>
           <Sprig size={70} flip opacity={0.28}/>
         </div>
 
         <Wordmark/>
-        <div style={{height:42}}/>
+        <div className="onboard-word-gap"/>
 
         <div className="eyebrow">Step 1 of 2</div>
-        <div style={{height:8}}/>
+        <div style={{height:6}}/>
         <h1 className="h-display">Tell the app where and when you began.</h1>
-        <div style={{height:14}}/>
+        <div style={{height:10}}/>
         <p className="body-prose" style={{fontSize:15}}>
           Your birth details stay on this device. They are used to calculate the natal chart that today's sky activates.
         </p>
 
-        <div style={{height:26}}/>
+        <div className="onboard-form-gap"/>
 
         <InputField label="Name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name"/>
         <InputField label="Birth date" type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)}/>
@@ -124,7 +113,7 @@ export function BirthSetup({ onNext }) {
           }}
         />
 
-        <button className="btn btn-ghost" type="button" onClick={handleSearch}>Find Birthplace</button>
+        <button className="btn btn-ghost onboard-find-button" type="button" onClick={handleSearch}>Find Birthplace</button>
 
         {status && <p className="meta" style={{marginTop:10}}>{status}</p>}
 
@@ -153,11 +142,10 @@ export function BirthSetup({ onNext }) {
           Use seed birthplace: Tauranga, NZ
         </ManualPlaceButton>
 
-        <div style={{height:22}}/>
+        <div style={{height:16}}/>
 
         <button className="btn" onClick={continueWithBirth}>Continue</button>
-        <div style={{height:12}}/>
-        <p className="meta" style={{textAlign:'center', fontStyle:'italic', fontFamily:'var(--serif)', fontSize:13, color:'var(--ink-mute)'}}>
+        <p className="meta onboard-fineprint">
           The app stores a birth hash for caching, not a remote profile.
         </p>
       </div>

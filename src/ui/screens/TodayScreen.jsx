@@ -1,11 +1,77 @@
+import { useEffect, useState } from 'react';
 import { MoonGlyph, Sprig, Wordmark, OrnamentDiv } from '../components/Primitives.jsx';
 
-function LoadingCard({ title = 'Calculating the sky.' }) {
+const LOADING_STEPS = [
+  ['sky', 'Sky'],
+  ['natal', 'Natal'],
+  ['signals', 'Signals'],
+  ['cache', 'Saved'],
+  ['writing', 'Writing'],
+];
+
+function useElapsedSeconds(startedAt, active) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!active) return undefined;
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [active, startedAt]);
+
+  if (!active || !startedAt) return 0;
+  return Math.max(0, Math.floor((now - startedAt) / 1000));
+}
+
+function LoadingCard({ title = 'Calculating the sky.', loading, isError = false }) {
+  const elapsed = useElapsedSeconds(loading?.startedAt, !isError);
+  const activeIndex = loading?.index ?? 1;
+  const total = loading?.total ?? LOADING_STEPS.length;
+  const progress = Math.max(12, Math.min(96, (activeIndex / total) * 100));
+  const stillWorking = elapsed >= 8 && loading?.step === 'writing';
+
   return (
-    <div className="card warm" style={{padding:'26px 24px'}}>
+    <div className="card warm" style={{padding:'26px 24px', overflow:'hidden'}}>
+      <div style={{position:'absolute', top:-10, right:-8, opacity:0.12}}><Sprig size={72} flip/></div>
       <div className="section-label">MoonTurtle</div>
-      <h1 className="h-display" style={{fontSize:26, marginBottom:12}}>{title}</h1>
-      <p className="body-prose">Pulling the current sky, checking your natal chart, and choosing the loudest signals.</p>
+      <h1 className="h-display" style={{fontSize:26, marginBottom:12}}>
+        {isError ? title : loading?.title ?? title}
+      </h1>
+      <p className="body-prose">
+        {isError ? 'Something interrupted the calculation. Try changing tabs and coming back, or update the reading settings.' : loading?.detail ?? 'Pulling the current sky, checking your natal chart, and choosing the loudest signals.'}
+      </p>
+
+      {!isError && (
+        <>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginTop:18}}>
+            <div className="meta">Step {activeIndex} of {total}</div>
+            <div className="meta">{elapsed}s elapsed</div>
+          </div>
+          <div className="loading-track" aria-hidden="true" style={{marginTop:8}}>
+            <div className="loading-fill" style={{width:`${progress}%`}}/>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:6, marginTop:12}}>
+            {LOADING_STEPS.map(([id, label], index) => {
+              const complete = index + 1 <= activeIndex;
+              return (
+                <div key={id} className="meta" style={{
+                  textAlign:'center',
+                  color: complete ? 'var(--terracotta)' : 'var(--ink-mute)',
+                  opacity: complete ? 1 : 0.62,
+                  letterSpacing:'0.03em',
+                }}>
+                  {label}
+                </div>
+              );
+            })}
+          </div>
+          {stillWorking && (
+            <p className="meta" style={{marginTop:14, lineHeight:1.45, letterSpacing:'0.03em'}}>
+              Still writing. Provider readings can take a little longer; if the provider cannot finish, MoonTurtle will use the local symbolic reading.
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -88,6 +154,7 @@ function sourceLabel(reading) {
 function ReadingSource({ reading, fromCache }) {
   const detail = reading?.sourceDetail;
   const systems = detail?.systems ?? [];
+  const receipts = reading?.receipts ?? [];
   return (
     <div style={{marginTop:14, paddingTop:12, borderTop:'1px solid var(--hairline)'}}>
       <div className="meta">
@@ -108,6 +175,18 @@ function ReadingSource({ reading, fromCache }) {
                   {system}
                 </span>
               ))}
+            </div>
+          )}
+          {receipts.length > 0 && (
+            <div style={{marginTop:12, paddingTop:10, borderTop:'1px solid var(--hairline)'}}>
+              <div className="eyebrow" style={{fontSize:9, letterSpacing:'0.16em'}}>Based on</div>
+              <ul style={{listStyle:'none', display:'flex', flexDirection:'column', gap:5, marginTop:7}}>
+                {receipts.map((receipt) => (
+                  <li key={receipt} className="meta" style={{lineHeight:1.4, letterSpacing:'0.03em'}}>
+                    {receipt}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </details>
@@ -134,7 +213,13 @@ export function TodayScreen({ state, user, onTab }) {
 
       <div style={{height:22}}/>
 
-      {!isReady && <LoadingCard title={state?.status === 'error' ? 'The sky did not calculate cleanly.' : 'Calculating the sky.'}/>}
+      {!isReady && (
+        <LoadingCard
+          title={state?.status === 'error' ? 'The sky did not calculate cleanly.' : 'Calculating the sky.'}
+          loading={state?.loading}
+          isError={state?.status === 'error'}
+        />
+      )}
 
       {isReady && (
         <>

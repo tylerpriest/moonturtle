@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
+const DEFAULT_MODEL_TIMEOUT_MS = 20000;
 
 const READING_SCHEMA = {
   type: 'object',
@@ -128,6 +129,24 @@ async function commandExists(command) {
   }
 }
 
+function modelTimeoutMs() {
+  const value = Number(process.env.MOONTURTLE_MODEL_TIMEOUT_MS ?? DEFAULT_MODEL_TIMEOUT_MS);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_MODEL_TIMEOUT_MS;
+}
+
+function isTimeoutError(error) {
+  return error?.killed || error?.code === 'ETIMEDOUT' || /timed out/i.test(error?.message ?? '');
+}
+
+function providerOrder(payload, mode, runners) {
+  if (mode !== 'auto') return [mode];
+  const requested = Array.isArray(payload.providerOrder) ? payload.providerOrder : [];
+  const clean = requested.filter((name, index) => (
+    runners[name] && requested.indexOf(name) === index
+  ));
+  return clean.length ? clean : ['codex', 'claude'];
+}
+
 async function runClaude(prompt) {
   if (!(await commandExists('claude'))) throw new Error('Claude CLI is not installed.');
   const schema = JSON.stringify(READING_SCHEMA);
@@ -142,7 +161,7 @@ async function runClaude(prompt) {
     '',
     '--no-session-persistence',
   ], {
-    timeout: Number(process.env.MOONTURTLE_MODEL_TIMEOUT_MS ?? 90000),
+    timeout: modelTimeoutMs(),
     maxBuffer: 1024 * 1024 * 4,
   });
   return normaliseReading(extractJson(stdout), 'local-claude-subscription');
@@ -167,7 +186,7 @@ async function runCodex(prompt) {
       '--ephemeral',
       prompt,
     ], {
-      timeout: Number(process.env.MOONTURTLE_MODEL_TIMEOUT_MS ?? 90000),
+      timeout: modelTimeoutMs(),
       maxBuffer: 1024 * 1024 * 4,
     });
     return normaliseReading(extractJson(await readFile(outputPath, 'utf8')), 'local-codex-subscription');
@@ -227,7 +246,7 @@ async function generateReading(payload, { apiKey } = {}) {
     claude: runClaude,
     codex: runCodex,
   };
-  const order = mode === 'auto' ? ['codex', 'claude'] : [mode];
+  const order = providerOrder(payload, mode, runners);
 
   for (const name of order) {
     const runner = runners[name];
@@ -235,14 +254,16 @@ async function generateReading(payload, { apiKey } = {}) {
     try {
       return await runner(prompt);
     } catch (error) {
-      errors.push(`${name}: ${error.message}`);
+      const timeout = isTimeoutError(error);
+      errors.push(`${name}: ${timeout ? `timed out after ${modelTimeoutMs()}ms` : error.message}`);
+      if (timeout) break;
     }
   }
 
   return {
     error: {
-      code: 'local_provider_unavailable',
-      message: 'No logged-in local Claude or Codex CLI provider completed the reading.',
+      code: errors.some((entry) => entry.includes('timed out')) ? 'local_provider_timeout' : 'local_provider_unavailable',
+      message: 'No local subscription provider completed quickly enough. The client can use the local symbolic reading.',
       detail: errors,
     },
   };

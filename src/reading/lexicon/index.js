@@ -9,6 +9,7 @@ const DEFAULT_ENTRY = {
 };
 
 export const SYMBOLIC_LEXICON = lexicon;
+export const SOURCE_METADATA_VERSION = 'local-synthesis-v3';
 
 export function systemLabels(ids = []) {
   return [...new Set(ids)]
@@ -66,6 +67,8 @@ export function readingSourceMetadata({ currentSky, signals } = {}) {
 
   return {
     label: 'Local symbolic lexicon',
+    metadataVersion: SOURCE_METADATA_VERSION,
+    lexiconVersion: lexicon.schemaVersion,
     summary: lexicon.summary,
     systems: systemLabels([...ids]),
     caveat: 'The astronomy is calculated; the meanings are authored symbolic interpretations from the named systems.',
