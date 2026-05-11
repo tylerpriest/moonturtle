@@ -2,20 +2,21 @@
 
 Two real users. Both are voice-calibration exemplars and astronomical regression fixtures. **Every astronomy change must pass for both.**
 
+**Astronomy framework:** true-sky sidereal midpoint (Mastering the Zodiac), Placidus houses. NOT Lahiri ayanamsa with equal 30° signs. The placements below are MTZ-method placements; equal-sign sidereal calculations may differ by 1-3° at sign boundaries. See `docs/master-prompt.md` § "Astronomy framework" for the open task on which library/approach to adopt.
+
 ---
 
 ## Tyler Priest
 
 **Birth**
 - Date: 13 April 1989
-- Time: 1:55 PM (NZST, UTC+12:00 — verify historical DST status)
-- Place: Tauranga, Bay of Plenty, New Zealand
-- Coordinates: -37.6878, 176.1651
+- Time: 13:55
+- Timezone: NZST (UTC+12, no DST in April 1989)
+- Place: Tauranga, Bay of Plenty, New Zealand (-37.6878, 176.1651)
 
-**Currently**
-- Manly, Sydney, Australia (-33.7969, 151.2840)
+**Currently:** Manly, Sydney, Australia (-33.7969, 151.2840)
 
-**Expected sidereal placements** (from the existing demo `src/data.js` — these are what Phase 1 astronomy.js must reproduce within ±1° before any other work proceeds)
+**Expected sidereal placements** (true-sky / MTZ — from existing demo data; Phase 1 astronomy must reproduce within ±1°)
 
 | Body | Sign | House |
 |---|---|---|
@@ -35,11 +36,11 @@ Two real users. Both are voice-calibration exemplars and astronomical regression
 | **Ascendant** | **Gemini** | — |
 | **Midheaven** | **Aries** | — |
 
-**Spica check:** Tyler's Sun must come out Pisces sidereal. If your implementation returns Aries, ayanamsa is not being subtracted.
+**Spica check:** Tyler's Sun must come out Pisces sidereal. If your implementation returns Aries, ayanamsa is not being applied / MTZ boundaries not respected.
 
-**Houses:** Whole-Sign (matches the integer house numbers above).
+**Voice exemplar:** Tyler's full curated 5-section reading is hard-coded into the current `src/data.js`. After the Phase-0 restructure it becomes `src/seed/tyler.js` and is referenced verbatim as the first `<exemplar>` block in `src/reading/prompt/05-exemplars.md`.
 
-**Voice exemplar:** Tyler's full reading is currently hard-coded into `src/data.js` and will be used verbatim as the `<exemplar>` block in `src/reading/prompt/05-exemplars.md`. See `MT_DATA.primary`, `MT_DATA.activations`, `MT_DATA.lunarAxis`, `MT_DATA.notice`, `MT_DATA.avoid` for the reference prose.
+Phase 2 TODO: generate a full 25-part master prompt output for Tyler matching today's date and Manly Sydney, to give exemplar parity with Ali.
 
 ---
 
@@ -47,53 +48,70 @@ Two real users. Both are voice-calibration exemplars and astronomical regression
 
 **Birth**
 - Date: 23 June 1983
-- Time: 17:58 (AEST, UTC+10:00 — verify historical DST status)
-- Place: Melbourne, Victoria, Australia
-- Coordinates: -37.8136, 144.9631
+- Time: 17:58
+- Timezone: AEST (UTC+10, no DST in Victoria in winter)
+- Place: Melbourne, Victoria, Australia (-37.8136, 144.9631)
 
-**Currently**
-- Sydney, Australia (-33.8688, 151.2093)
+**Currently:** Sydney, NSW, Australia (-33.8688, 151.2093)
 
-**Expected sidereal placements** — **TODO before Phase 1**. Cross-check against masteringthezodiac.com or a Vedic calculator and fill this table before writing astronomy tests.
+**Expected sidereal placements** (true-sky midpoint / MTZ, Placidus houses — confirmed from the canonical reading at `docs/exemplars/ali-daily-2026-05-09.md`)
 
-| Body | Sign | House |
-|---|---|---|
-| Sun | _Cancer (tropical) → likely Gemini sidereal (verify)_ | |
-| Moon | _verify_ | |
-| Mercury | _verify_ | |
-| Venus | _verify_ | |
-| Mars | _verify_ | |
-| Jupiter | _verify_ | |
-| Saturn | _verify_ | |
-| Uranus | _verify_ | |
-| Neptune | _verify_ | |
-| Pluto | _verify_ | |
-| Chiron | _verify_ | |
-| North Node | _verify_ | |
-| Ascendant | _verify_ | |
-| Midheaven | _verify_ | |
+| Body | Sign | House | Notes |
+|---|---|---|---|
+| Sun | Gemini | 6 | conjunct Mars, North Node; trine Saturn-Pluto; opposite Neptune |
+| Moon | Scorpio | 11 | conjunct Uranus + Jupiter; opposite Mercury |
+| Mercury | Taurus | 6 | opposite natal Moon |
+| Venus | Leo | 8 | currently squared by transiting Sun |
+| Mars | Taurus | 6 | conjunct natal Sun + North Node |
+| Jupiter | Scorpio | 11 | **chart ruler** (Sagittarius rising); retrograde |
+| Saturn | Virgo | 10 | conjunct natal Pluto |
+| Uranus | Scorpio | 11 | conjunct natal Moon + Jupiter |
+| Neptune | Sagittarius | 12 | opposite natal Sun |
+| Pluto | Virgo | 10 | conjunct natal Saturn |
+| North Node | Taurus | 6 | growth direction: embodiment, daily rhythm |
+| South Node | Scorpio | 12 | (implied) |
+| **Ascendant** | **Sagittarius** | — | chart ruler = Jupiter |
+| **Descendant** | **Gemini** | — | |
+| **Midheaven** | **Virgo** | — | |
+| **IC** | **Pisces** | — | |
 
-**Voice exemplar:** Phase 2. Generate Ali's first reading from Phase 1 output, then hand-edit to the user's taste, then commit as the second `<exemplar>` block in `src/reading/prompt/05-exemplars.md`.
+**Distinguishing checks for Ali:**
+- Sun sidereal Gemini (tropical Cancer — boundary case; verify MTZ midpoint puts late June in Gemini)
+- Ascendant Sagittarius (depends on confirmed 17:58 AEST)
+- Jupiter is the **chart ruler** — should be flagged as such in the natal output
+- The Scorpio 11th-house stellium (Moon + Jupiter + Uranus) is the dominant emotional signature
+
+**Voice exemplars:**
+- Daily long-form: `docs/exemplars/ali-daily-2026-05-09.md` (full 25 parts, Saturday 9 May 2026 in Sydney)
+- Natal long-form: `docs/exemplars/ali-natal-long-form.md` (essay-style natal reading)
+
+Phase 2 TODO: distill the daily long-form into a curated 5-section JSON exemplar and add as the second `<exemplar>` block in `src/reading/prompt/05-exemplars.md`.
 
 ---
 
 ## Regression test
 
-Both users live in `src/seed/{tyler,ali}.js`. The astronomy unit tests do:
+Both users are imported into the astronomy unit test:
 
 ```js
-import { tyler, ali } from "../seed";
+import { tyler } from "../seed/tyler";
+import { ali } from "../seed/ali";
 import { computeNatal } from "../domain/astronomy";
 
 for (const u of [tyler, ali]) {
-  const chart = computeNatal(u.birth);
-  for (const expected of u.expectedPlacements) {
-    expect(chart.bodies[expected.body]).toMatchObject({
-      sign: expected.sign,
-      house: expected.house,
-    });
+  const chart = computeNatal(u.user.birth);
+
+  for (const expected of u.expectedPlacements.bodies) {
+    const computed = chart.bodies.find(b => b.body === expected.body);
+    expect(computed.sign).toBe(expected.sign);
+    expect(computed.house).toBe(expected.house);
+  }
+
+  for (const expected of u.expectedPlacements.angles) {
+    const computed = chart.angles.find(a => a.angle === expected.angle);
+    expect(computed.sign).toBe(expected.sign);
   }
 }
 ```
 
-If either user fails, do not ship.
+**If either user fails, do not ship.** The voice exemplars in the prompt cache assume these placements are correct.

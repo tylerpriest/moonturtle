@@ -105,11 +105,22 @@ docs/
 
 ## Architecture (locked in)
 
-### Astronomy — `astronomy-engine` + `circular-natal-horoscope-js`
-- **`astronomy-engine`** (Don Cross, MIT, ~35KB gzip, pure JS) — Sun/Moon/planet positions, lunar phase, illumination, moonrise/moonset. Returns tropical ecliptic longitude.
-- **`circular-natal-horoscope-js`** (MIT, ~25KB gzip) — house cusps. Default to **Whole-Sign** houses (matches sidereal convention and the existing UI which only shows integer house numbers).
-- **Sidereal conversion** — subtract **Lahiri ayanamsa** from tropical longitudes. Verify by Spica check: Tyler's Sun must come out **Pisces sidereal** (he's Aries tropical).
-- **Why not swisseph-wasm or jyotish-calculations:** Both depend on Swiss Ephemeris, which is GPL-3 / commercial-license-only and ~2MB bundle. The UI copy currently says "Swiss Ephemeris" — **change to "Lahiri ayanamsa"** to stay honest until/unless we license SE.
+### Astronomy — true-sky sidereal midpoint method (Mastering the Zodiac framework)
+
+**Correction from the earlier draft:** the verbatim master prompt (`docs/master-prompt.md`) specifies the **Mastering the Zodiac true-sky sidereal midpoint method** — unequal sign lengths matching actual constellation sizes, including **Ophiuchus** (Nov 29 – Dec 18). This is NOT equal-sign sidereal with Lahiri ayanamsa. The previously planned approach ("subtract Lahiri ayanamsa from tropical") would produce equal-sign sidereal and silently violate the master prompt's instruction *"Do not silently switch to standard equal-sign sidereal astrology."*
+
+**Open task for the next agent — must resolve before Phase 1 astronomy.js is written:**
+
+- **Option A** (recommended starting point): Port MTZ's midpoint constellation boundaries into a JS lookup table (~13 entries with degree ranges). Compute absolute ecliptic longitude with `astronomy-engine`, then classify into the MTZ sign by table lookup. Validate against the seed users in `docs/seed-users.md`.
+- **Option B:** Use IAU constellation boundaries projected onto the ecliptic. More astronomically rigorous but the resulting boundaries may not match MTZ's exact midpoint scheme. Check both against MTZ's own dates page.
+- **Option C:** Self-host an MTZ-compatible API. None verified to exist as of May 2026; check `Astrologer-API` and similar before assuming.
+- **Option D:** Ship equal-sign sidereal with explicit UI disclosure. This violates the master prompt's instruction but is the fastest path to MVP. If chosen, the Method screen must explicitly state "this app uses equal-sign sidereal, not true-sky midpoint" and offer the screenshot-upload fallback for users who want true-sky.
+
+**Libraries still useful regardless of approach:**
+- **`astronomy-engine`** (Don Cross, MIT, ~35KB gzip, pure JS) — Sun/Moon/planet absolute ecliptic longitudes, lunar phase, illumination, moonrise/moonset. Provides the raw input.
+- **`circular-natal-horoscope-js`** (MIT, ~25KB gzip) — house cusps. **Use Placidus** (the Ali exemplar uses Placidus; the master prompt requires stating which house system is in use).
+
+**Regression check (mandatory before Phase 1 ships):** the astronomy must reproduce both seed users' placements from `docs/seed-users.md` within ±1°. The Ali check is particularly diagnostic because her Sun sits near the Gemini boundary; MTZ midpoint places it firmly in Gemini, equal-sign sidereal may differ.
 
 ### Reading engine — Claude Opus 4.7 via Cloudflare Worker
 - **Model:** `claude-opus-4-7`. Voice control is the product; Sonnet won't hold the knife-edge between contemplation and prescription.
