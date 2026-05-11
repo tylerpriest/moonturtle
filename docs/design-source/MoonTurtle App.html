@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoonTurtle — Personal Sky Reading</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: #e8dcc0; min-height: 100vh; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="data.js"></script>
+<script type="text/babel" src="primitives.jsx"></script>
+<script type="text/babel" src="screens-onboarding.jsx"></script>
+<script type="text/babel" src="screens-today.jsx"></script>
+<script type="text/babel" src="screens-rest.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const { useState } = React;
+
+function PhoneFlow() {
+  const [tab, setTab] = useState('today');
+  const screens = {
+    today:   <TodayScreen   onTab={setTab} fixed/>,
+    sky:     <SkyScreen     onTab={setTab} fixed/>,
+    natal:   <NatalScreen   onTab={setTab} fixed/>,
+    journal: <JournalScreen onTab={setTab} fixed/>,
+    method:  <MethodScreen  onTab={setTab} fixed/>,
+  };
+  return screens[tab];
+}
+
+function App() {
+  return (
+    <DesignCanvas
+      title="MoonTurtle"
+      subtitle="True Sky Sidereal — personal reading flow"
+      bg="#e8dcc0"
+    >
+      <DCSection id="onboarding" title="Onboarding">
+        <DCArtboard id="ob-1" label="Birth Setup" width={390} height={900} style={{overflow:'visible'}}>
+          <BirthSetup/>
+        </DCArtboard>
+        <DCArtboard id="ob-2" label="Permission" width={390} height={900} style={{overflow:'visible'}}>
+          <Permission/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="reading" title="Daily Reading — main flow">
+        <DCArtboard id="r-1" label="Today (Primary Reading)" width={390} height={2900} style={{overflow:'visible'}}>
+          <TodayScreen onTab={()=>{}}/>
+        </DCArtboard>
+        <DCArtboard id="r-2" label="Sky / Receipts" width={390} height={1180} style={{overflow:'visible'}}>
+          <SkyScreen onTab={()=>{}}/>
+        </DCArtboard>
+        <DCArtboard id="r-3" label="Natal Pattern" width={390} height={1500} style={{overflow:'visible'}}>
+          <NatalScreen onTab={()=>{}}/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="trust" title="Trust & continuity">
+        <DCArtboard id="t-1" label="Method" width={390} height={1180} style={{overflow:'visible'}}>
+          <MethodScreen onTab={()=>{}}/>
+        </DCArtboard>
+        <DCArtboard id="t-2" label="Journal" width={390} height={1700} style={{overflow:'visible'}}>
+          <JournalScreen onTab={()=>{}}/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="prototype" title="Live prototype (tab navigation works)">
+        <DCArtboard id="p-1" label="Tap tabs to navigate" width={390} height={844}>
+          <PhoneFlow/>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+export const MT_DATA = {
+  user: {
+    name: "Tyler",
+    birth: {
+      date: "13 April 1989",
+      time: "1:55 PM",
+      tz: "+12:00",
+      place: "Tauranga, Bay of Plenty, New Zealand",
+    },
+    now: {
+      location: "Manly, Sydney",
+      date: "Thursday, 7 May 2026",
+      time: "—",
+    },
+  },
+  natal: [
+    { body: "Sun",        sign: "Pisces",      house: 9,  sym: "☉" },
+    { body: "Moon",       sign: "Gemini",      house: 12, sym: "☽" },
+    { body: "Mercury",    sign: "Aries",       house: 10, sym: "☿" },
+    { body: "Venus",      sign: "Pisces",      house: 9,  sym: "♀" },
+    { body: "Mars",       sign: "Taurus",      house: 11, sym: "♂" },
+    { body: "Jupiter",    sign: "Taurus",      house: 11, sym: "♃" },
+    { body: "Saturn",     sign: "Sagittarius", house: 6,  sym: "♄" },
+    { body: "Uranus",     sign: "Sagittarius", house: 6,  sym: "♅" },
+    { body: "Neptune",    sign: "Sagittarius", house: 6,  sym: "♆" },
+    { body: "Pluto",      sign: "Libra",       house: 4,  sym: "♇" },
+    { body: "Chiron",     sign: "Gemini",      house: 12, sym: "⚷" },
+    { body: "North Node", sign: "Aquarius",    house: 8,  sym: "☊" },
+    { body: "South Node", sign: "Leo",         house: 2,  sym: "☋" },
+  ],
+  angles: [
+    { angle: "Ascendant", sign: "Gemini" },
+    { angle: "Midheaven", sign: "Aries"  },
+  ],
+  lunar: {
+    phase: "Waning Gibbous",
+    illumination: 74.6,
+    age: 19.74,
+    cyclePct: 66.8,
+    moonSign: "Sagittarius",
+    sunSign:  "Aries",
+    moonrise: "9:07 PM AEST",
+    moonset:  "11:19 AM AEST",
+    lastQuarter: "10 May 2026, 7:10 AM",
+    nextNewMoon: "17 May 2026, 6:01 AM",
+  },
+  primary: {
+    headline: "Today is a “make meaning from the map” day.",
+    body: "Your natal chart says you are built to translate subtle, spiritual, philosophical, and ecological pattern into language and public frameworks. Today’s sky says the task is to organize the many threads into a meaningful system, with the Moon helping you turn Gemini-level curiosity into Sagittarius-level orientation.",
+  },
+  activations: [
+    {
+      title: "Sun + Mercury in Aries",
+      activates: "natal Mercury in Aries / Midheaven Aries",
+      theme: "Direct speech, naming, leadership through ideas, making the invisible obvious.",
+      question: "What is the actual architecture of this thing?",
+    },
+    {
+      title: "Moon in Sagittarius",
+      activates: "natal Saturn / Uranus / Neptune in Sagittarius (6th house)",
+      theme: "Daily rhythm, work, health, practice, discipline, freedom, belief.",
+      insight: "Your daily system has to match your philosophy, or it will feel false.",
+    },
+    {
+      title: "Jupiter in Gemini",
+      activates: "Gemini Ascendant / Moon / Chiron field",
+      theme: "Expansion through language, research, conversation, naming, writing, mapping, teaching, and asking better questions.",
+    },
+    {
+      title: "Venus + Uranus in Taurus",
+      activates: "natal Mars / Jupiter in Taurus (11th)",
+      theme: "New forms of community, friendship, values, future-building, embodied creativity, practical systems.",
+      insight: "The beautiful thing wants to become usable.",
+    },
+    {
+      title: "Mars in Pisces",
+      activates: "same constellation as natal Sun / Venus",
+      theme: "Devotional action, creative action, contemplative research, quiet persistence, acting from felt meaning.",
+    },
+  ],
+  lunarAxis: {
+    natal:   { sign: "Gemini",      house: "12th house", words: ["questions","details","language","nervous system","private processing"] },
+    current: { sign: "Sagittarius", house: "transiting", words: ["meaning","worldview","philosophy","freedom","big-picture truth"] },
+    reading: "Today is emotionally about turning scattered questions into a larger worldview. The Moon in Sagittarius is not asking for more facts forever. It is asking: what does all this mean?",
+  },
+  notice: [
+    "The thread that keeps reappearing in different conversations.",
+    "Where your daily routine is out of alignment with what you actually believe.",
+    "Ideas that want to be named, mapped, or written down.",
+    "A friendship or community that’s asking to evolve into something more useful.",
+  ],
+  avoid: [
+    "Collecting more information without ever organizing it.",
+    "Demanding a single tidy answer from a day that wants synthesis.",
+    "Performing certainty when the honest move is contemplation.",
+    "Mistaking restlessness for direction.",
+  ],
+};

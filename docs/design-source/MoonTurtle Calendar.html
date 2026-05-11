@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoonTurtle — Sidereal Calendar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Cormorant+SC:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #100b05;
+      --surface: #1d1108;
+      --card: #261608;
+      --card-hover: #2f1c0a;
+      --border: rgba(196,112,62,0.15);
+      --border-strong: rgba(196,112,62,0.35);
+      --accent: #c4703e;
+      --gold: #d4a853;
+      --text: #f0e6d3;
+      --text-dim: #9a7050;
+      --muted: #3a2510;
+      --moon-lit: #f0e6d3;
+      --moon-dark: #070402;
+      --new-moon-border: rgba(240,230,211,0.25);
+      --progress-bg: rgba(255,255,255,0.08);
+    }
+    .v-parchment {
+      --bg: #f2e8d2;
+      --surface: #e8dcc0;
+      --card: #fdf6e8;
+      --card-hover: #f5ecda;
+      --border: rgba(100,50,10,0.14);
+      --border-strong: rgba(100,50,10,0.28);
+      --accent: #9b3c1e;
+      --gold: #9a7218;
+      --text: #1a0d05;
+      --text-dim: #7a5030;
+      --muted: #d0bca0;
+      --moon-lit: #1a0d05;
+      --moon-dark: #c8b898;
+      --new-moon-border: rgba(26,13,5,0.25);
+      --progress-bg: rgba(0,0,0,0.08);
+    }
+    .v-moss {
+      --bg: #060c09;
+      --surface: #0d1810;
+      --card: #122016;
+      --card-hover: #172819;
+      --border: rgba(100,165,85,0.14);
+      --border-strong: rgba(100,165,85,0.3);
+      --accent: #78ab6a;
+      --gold: #c49040;
+      --text: #deecd4;
+      --text-dim: #527050;
+      --muted: #1a2e1c;
+      --moon-lit: #deecd4;
+      --moon-dark: #030604;
+      --new-moon-border: rgba(222,236,212,0.2);
+      --progress-bg: rgba(255,255,255,0.06);
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .app-bg {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse 70% 50% at 25% 15%, rgba(196,112,62,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 60% at 80% 85%, rgba(80,40,5,0.18) 0%, transparent 55%),
+        var(--bg);
+      padding-bottom: 80px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 44px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-wordmark {
+      font-family: 'Cormorant SC', serif;
+      font-size: 20px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+    }
+    .brand-sub {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+    .nav-controls { display: flex; align-items: center; gap: 18px; }
+    .month-label {
+      font-family: 'Cormorant SC', serif;
+      font-size: 24px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      min-width: 210px;
+      text-align: center;
+    }
+    .nav-btn {
+      background: none;
+      border: 1px solid var(--border-strong);
+      color: var(--text-dim);
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+      font-family: 'Cormorant Garamond', serif;
+    }
+    .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .today-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      padding: 6px 18px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .today-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ── Moon Banner ── */
+    .moon-banner {
+      margin: 0 44px;
+      padding: 20px 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+    .banner-moon-num {
+      font-family: 'Cormorant SC', serif;
+      font-size: 12px;
+      letter-spacing: 0.22em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .banner-moon-name {
+      font-size: 28px;
+      font-weight: 400;
+      font-style: italic;
+      line-height: 1;
+      color: var(--text);
+      margin: 3px 0;
+    }
+    .banner-moon-sign {
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .banner-divider {
+      width: 1px; height: 44px;
+      background: var(--border-strong);
+      flex-shrink: 0;
+    }
+    .progress-wrap { display: flex; flex-direction: column; gap: 7px; min-width: 180px; }
+    .progress-label {
+      display: flex; justify-content: space-between;
+      font-size: 11px; letter-spacing: 0.1em;
+      color: var(--text-dim); text-transform: uppercase;
+    }
+    .progress-track {
+      height: 3px;
+      background: var(--progress-bg);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--gold));
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+    .progress-days { font-size: 10px; letter-spacing: 0.08em; color: var(--text-dim); }
+
+    /* ── Calendar ── */
+    .calendar-wrap { margin: 0 44px; border: 1px solid var(--border); border-top: none; }
+    .weekday-row {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      border-bottom: 1px solid var(--border);
+    }
+    .weekday-cell {
+      padding: 10px 0; text-align: center;
+      font-family: 'Cormorant SC', serif;
+      font-size: 11px; letter-spacing: 0.18em;
+      color: var(--text-dim); text-transform: uppercase;
+    }
+    .days-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+    }
+    .day-cell {
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      min-height: 108px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+      position: relative;
+      display: flex; flex-direction: column;
+      align-items: flex-start; gap: 4px;
+    }
+    .day-cell:nth-child(7n) { border-right: none; }
+    .day-cell:hover { background: var(--card-hover); }
+    .day-cell.empty { cursor: default; min-height: 108px; }
+    .day-cell.empty:hover { background: transparent; }
+    .day-cell.today { background: var(--card); }
+    .day-cell.today::after {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--gold));
+    }
+    .day-cell.moon-start { border-left: 2px solid rgba(196,112,62,0.5); }
+    .day-cell.selected {
+      background: var(--card);
+      outline: 1px solid var(--accent);
+      outline-offset: -1px;
+    }
+    .day-num {
+      font-size: 16px; font-weight: 400;
+      color: var(--text); line-height: 1;
+    }
+    .day-cell.today .day-num { color: var(--accent); font-weight: 600; }
+    .moon-tag {
+      font-size: 9px; letter-spacing: 0.1em;
+      color: var(--accent); text-transform: uppercase;
+      margin-left: auto;
+    }
+    .day-num-row { display: flex; align-items: baseline; width: 100%; }
+    .day-moon-icon { align-self: center; margin: 2px 0; }
+    .day-sidereal {
+      font-size: 10px; letter-spacing: 0.06em;
+      color: var(--text-dim); margin-top: auto;
+      line-height: 1.3;
+    }
+    .day-sign { color: var(--accent); opacity: 0.9; }
+    .day-phase-name { font-size: 9px; color: var(--text-dim); letter-spacing: 0.05em; }
+
+    /* ── Day Detail ── */
+    .day-detail {
+      margin: 0 44px;
+      padding: 14px 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 1px solid var(--accent);
+      display: flex; align-items: center; gap: 30px;
+    }
+    .detail-label {
+      font-size: 10px; letter-spacing: 0.14em;
+      color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px;
+    }
+    .detail-value { font-size: 18px; font-style: italic; }
+    .detail-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+    /* ── 13 Moon Strip ── */
+    .moon-strip {
+      margin: 0 44px;
+      padding: 18px 28px;
+      border: 1px solid var(--border);
+      border-top: none;
+      display: flex; gap: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .moon-strip::-webkit-scrollbar { display: none; }
+    .moon-pip {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 5px;
+      min-width: 62px; padding: 6px 4px;
+      cursor: pointer;
+      opacity: 0.38;
+      transition: opacity 0.2s;
+      border-right: 1px solid var(--border);
+    }
+    .moon-pip:last-child { border-right: none; }
+    .moon-pip.active { opacity: 1; }
+    .moon-pip:hover { opacity: 0.7; }
+    .pip-roman {
+      font-family: 'Cormorant SC', serif;
+      font-size: 10px; letter-spacing: 0.1em; color: var(--text-dim);
+    }
+    .moon-pip.active .pip-roman { color: var(--accent); }
+    .pip-symbol { font-size: 14px; line-height: 1; }
+    .pip-name { font-size: 9.5px; color: var(--text-dim); text-align: center; line-height: 1.3; }
+    .moon-pip.active .pip-name { color: var(--text); }
+    .pip-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--muted);
+    }
+    .moon-pip.active .pip-dot {
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    /* ── Tweaks ── */
+    .tweaks-panel {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      padding: 20px; width: 234px;
+      z-index: 200;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+    }
+    .tweaks-heading {
+      font-family: 'Cormorant SC', serif;
+      font-size: 12px; letter-spacing: 0.2em;
+      color: var(--text-dim); text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .tweak-group { margin-bottom: 18px; }
+    .tweak-group:last-child { margin-bottom: 0; }
+    .tweak-group-label {
+      font-size: 10px; letter-spacing: 0.14em;
+      color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px;
+    }
+    .variant-list { display: flex; flex-direction: column; gap: 5px; }
+    .vbtn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 13px; padding: 7px 12px;
+      text-align: left; cursor: pointer;
+      transition: all 0.15s;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .vbtn:hover { border-color: var(--accent); color: var(--text); }
+    .vbtn.active { border-color: var(--accent); color: var(--accent); background: rgba(196,112,62,0.07); }
+    .vswatch { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+    .tweak-check {
+      display: flex; align-items: center; gap: 9px;
+      cursor: pointer; font-size: 13px; color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .tweak-check:last-child { margin-bottom: 0; }
+    .tweak-check input { accent-color: var(--accent); }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// ── Astronomical constants ──
+const SIDEREAL_EPOCH  = new Date('2025-04-14T00:00:00Z'); // sidereal year start epoch
+const SIDEREAL_PERIOD = 27.321661; // days per sidereal month
+const SOLAR_YEAR      = 365.25636; // days
+const SYNODIC_REF     = new Date('2023-02-20T07:06:00Z'); // known new moon
+const SYNODIC_PERIOD  = 29.530589;
+
+const MOONS = [
+  { n:1,  roman:'I',    name:'Seed Moon',    sign:'Aries',       sym:'♈', el:'Fire'  },
+  { n:2,  roman:'II',   name:'Blossom Moon', sign:'Taurus',      sym:'♉', el:'Earth' },
+  { n:3,  roman:'III',  name:'Twin Moon',    sign:'Gemini',      sym:'♊', el:'Air'   },
+  { n:4,  roman:'IV',   name:'Tide Moon',    sign:'Cancer',      sym:'♋', el:'Water' },
+  { n:5,  roman:'V',    name:'Hearth Moon',  sign:'Leo',         sym:'♌', el:'Fire'  },
+  { n:6,  roman:'VI',   name:'Harvest Moon', sign:'Virgo',       sym:'♍', el:'Earth' },
+  { n:7,  roman:'VII',  name:'Balance Moon', sign:'Libra',       sym:'♎', el:'Air'   },
+  { n:8,  roman:'VIII', name:'Venom Moon',   sign:'Scorpio',     sym:'♏', el:'Water' },
+  { n:9,  roman:'IX',   name:'Healer Moon',  sign:'Ophiuchus',   sym:'⛎', el:'Water' },
+  { n:10, roman:'X',    name:'Arrow Moon',   sign:'Sagittarius', sym:'♐', el:'Fire'  },
+  { n:11, roman:'XI',   name:'Stone Moon',   sign:'Capricorn',   sym:'♑', el:'Earth' },
+  { n:12, roman:'XII',  name:'Storm Moon',   sign:'Aquarius',    sym:'♒', el:'Air'   },
+  { n:13, roman:'XIII', name:'Dream Moon',   sign:'Pisces',      sym:'♓', el:'Water' },
+];
+
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ── Calculations ──
+function getSynodicPhase(date) {
+  const d = (date - SYNODIC_REF) / 86400000;
+  return ((d % SYNODIC_PERIOD) + SYNODIC_PERIOD) % SYNODIC_PERIOD / SYNODIC_PERIOD;
+}
+
+function getSiderealMoon(date) {
+  const d     = (date - SIDEREAL_EPOCH) / 86400000;
+  const inYr  = ((d % SOLAR_YEAR) + SOLAR_YEAR) % SOLAR_YEAR;
+  const idx   = Math.min(12, Math.floor(inYr / SIDEREAL_PERIOD));
+  const dayIn = inYr - idx * SIDEREAL_PERIOD;
+  return {
+    moon:     MOONS[idx],
+    idx,
+    dayInMoon: Math.floor(dayIn) + 1,
+    totalDays: Math.floor(SIDEREAL_PERIOD),
+    progress:  dayIn / SIDEREAL_PERIOD,
+  };
+}
+
+function phaseName(p) {
+  if (p < 0.03 || p > 0.97) return 'New Moon';
+  if (p < 0.22) return 'Waxing Crescent';
+  if (p < 0.28) return 'First Quarter';
+  if (p < 0.47) return 'Waxing Gibbous';
+  if (p < 0.53) return 'Full Moon';
+  if (p < 0.72) return 'Waning Gibbous';
+  if (p < 0.78) return 'Last Quarter';
+  return 'Waning Crescent';
+}
+
+// ── Moon Phase SVG ──
+function MoonPhaseIcon({ date, size = 30 }) {
+  const phase = getSynodicPhase(date);
+  const r  = (size - 4) / 2;
+  const cx = size / 2, cy = size / 2;
+  const isNew  = phase < 0.03 || phase > 0.97;
+  const isFull = phase > 0.47 && phase < 0.53;
+  const waxing = phase <= 0.5;
+
+  if (isNew) return (
+    <svg width={size} height={size} style={{display:'block'}}>
+      <circle cx={cx} cy={cy} r={r} fill="var(--moon-dark)" stroke="var(--new-moon-border)" strokeWidth="1"/>
+    </svg>
+  );
+  if (isFull) return (
+    <svg width={size} height={size} style={{display:'block'}}>
+      <circle cx={cx} cy={cy} r={r} fill="var(--moon-lit)"/>
+    </svg>
+  );
+
+  const rx        = Math.abs(r * Math.cos(2 * Math.PI * phase));
+  const isGibbous = (waxing && phase > 0.25) || (!waxing && phase < 0.75);
+  let path;
+  if (waxing) {
+    const s = isGibbous ? 0 : 1;
+    path = `M${cx} ${cy-r} A${r} ${r} 0 0 1 ${cx} ${cy+r} A${Math.max(0.5,rx)} ${r} 0 0 ${s} ${cx} ${cy-r}`;
+  } else {
+    const s = isGibbous ? 1 : 0;
+    path = `M${cx} ${cy-r} A${r} ${r} 0 0 0 ${cx} ${cy+r} A${Math.max(0.5,rx)} ${r} 0 0 ${s} ${cx} ${cy-r}`;
+  }
+  return (
+    <svg width={size} height={size} style={{display:'block'}}>
+      <circle cx={cx} cy={cy} r={r} fill="var(--moon-dark)"/>
+      <path d={path} fill="var(--moon-lit)"/>
+    </svg>
+  );
+}
+
+// ── Turtle Logo ──
+function TurtleLogo({ size = 38 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 60 52" fill="none">
+      {/* shell body */}
+      <ellipse cx="27" cy="27" rx="16" ry="13" fill="currentColor"/>
+      {/* shell scutes (simplified 13-plate pattern) */}
+      <ellipse cx="27" cy="19.5" rx="5.5" ry="3.8" fill="none" stroke="var(--bg)" strokeWidth="0.9" opacity="0.55"/>
+      <ellipse cx="27" cy="27"   rx="6"   ry="4.3" fill="none" stroke="var(--bg)" strokeWidth="0.9" opacity="0.55"/>
+      <ellipse cx="27" cy="34.5" rx="5.5" ry="3.8" fill="none" stroke="var(--bg)" strokeWidth="0.9" opacity="0.55"/>
+      <path d="M21.5 19.5 Q16 23 16 27 Q16 31 21.5 34.5" fill="none" stroke="var(--bg)" strokeWidth="0.8" opacity="0.5"/>
+      <path d="M32.5 19.5 Q39 23 39 27 Q39 31 32.5 34.5" fill="none" stroke="var(--bg)" strokeWidth="0.8" opacity="0.5"/>
+      {/* head */}
+      <ellipse cx="46.5" cy="25" rx="6.5" ry="5.5" fill="currentColor"/>
+      <circle cx="49" cy="22.5" r="1.3" fill="var(--bg)" opacity="0.65"/>
+      {/* tail */}
+      <path d="M11 29 Q5 33.5 7.5 38.5" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+      {/* legs */}
+      <ellipse cx="18" cy="39" rx="5.5" ry="3" fill="currentColor" transform="rotate(-28 18 39)"/>
+      <ellipse cx="36" cy="39" rx="5.5" ry="3" fill="currentColor" transform="rotate(28 36 39)"/>
+      <ellipse cx="18" cy="15" rx="5.5" ry="3" fill="currentColor" transform="rotate(28 18 15)"/>
+      <ellipse cx="36" cy="15" rx="5.5" ry="3" fill="currentColor" transform="rotate(-28 36 15)"/>
+    </svg>
+  );
+}
+
+// ── Botanical corner ──
+function BotLeaf({ flip }) {
+  return (
+    <svg width="90" height="90" viewBox="0 0 90 90" fill="none"
+      style={{transform: flip ? 'scaleX(-1)' : 'none', opacity: 0.12, pointerEvents:'none'}}>
+      <path d="M12 78 Q22 56 44 44 Q32 30 12 12" stroke="var(--accent)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <path d="M26 62 Q34 50 44 44" stroke="var(--accent)" strokeWidth="1" fill="none"/>
+      <path d="M18 70 Q24 60 32 56" stroke="var(--accent)" strokeWidth="0.8" fill="none"/>
+      <ellipse cx="44" cy="44" rx="9" ry="5.5" fill="var(--accent)" transform="rotate(-32 44 44)" opacity="0.7"/>
+      <ellipse cx="30" cy="54" rx="7" ry="4.5" fill="var(--accent)" transform="rotate(-18 30 54)" opacity="0.55"/>
+      <ellipse cx="19" cy="65" rx="6" ry="3.5" fill="var(--accent)" transform="rotate(-8 19 65)" opacity="0.4"/>
+    </svg>
+  );
+}
+
+// ── Defaults ──
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "variant": "parchment",
+  "showSiderealDay": true,
+  "showPhaseName": true
+}/*EDITMODE-END*/;
+
+// ── App ──
+function App() {
+  const today = new Date(); today.setHours(12,0,0,0);
+
+  const loadTweaks = () => {
+    try {
+      const s = localStorage.getItem('mt_tweaks');
+      return s ? { ...TWEAK_DEFAULTS, ...JSON.parse(s) } : { ...TWEAK_DEFAULTS };
+    } catch(e) { return { ...TWEAK_DEFAULTS }; }
+  };
+
+  const [tweaks,        setTweaks]        = useState(loadTweaks);
+  const [tweaksVisible, setTweaksVisible] = useState(false);
+  const [viewYear,      setViewYear]      = useState(today.getFullYear());
+  const [viewMonth,     setViewMonth]     = useState(today.getMonth());
+  const [selected,      setSelected]      = useState(null);
+
+  // Tweaks protocol
+  useEffect(() => {
+    const handler = e => {
+      if (e.data?.type === '__activate_edit_mode')   setTweaksVisible(true);
+      if (e.data?.type === '__deactivate_edit_mode') setTweaksVisible(false);
+    };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  const updateTweak = (key, val) => {
+    const next = { ...tweaks, [key]: val };
+    setTweaks(next);
+    try { localStorage.setItem('mt_tweaks', JSON.stringify(next)); } catch(e) {}
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits: next }, '*');
+  };
+
+  // Calendar grid
+  const firstDay    = new Date(viewYear, viewMonth, 1);
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const startOffset = firstDay.getDay();
+  const cells = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(new Date(viewYear, viewMonth, d, 12, 0, 0));
+  }
+
+  const prevMonth = () => viewMonth === 0 ? (setViewMonth(11), setViewYear(y=>y-1)) : setViewMonth(m=>m-1);
+  const nextMonth = () => viewMonth === 11 ? (setViewMonth(0), setViewYear(y=>y+1)) : setViewMonth(m=>m+1);
+  const goToday   = () => { setViewYear(today.getFullYear()); setViewMonth(today.getMonth()); };
+  const isToday   = d => d && d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth() && d.getDate()===today.getDate();
+
+  const isMoonStart = d => {
+    if (!d) return false;
+    const prev = new Date(d.getTime() - 86400000);
+    return getSiderealMoon(d).idx !== getSiderealMoon(prev).idx;
+  };
+
+  // Banner: use mid-month for primary display
+  const midMonth   = new Date(viewYear, viewMonth, 15, 12, 0, 0);
+  const bannerMoon = getSiderealMoon(midMonth);
+  const todayMoon  = getSiderealMoon(today);
+  const todayPhase = getSynodicPhase(today);
+
+  const selMoon  = selected ? getSiderealMoon(selected) : null;
+  const selPhase = selected ? getSynodicPhase(selected) : null;
+
+  const varClass = tweaks.variant === 'parchment' ? 'v-parchment'
+                 : tweaks.variant === 'moss'       ? 'v-moss'
+                 : '';
+
+  return (
+    <div className={`app-bg ${varClass}`} style={{position:'relative'}}>
+      {/* Botanicals */}
+      <div style={{position:'absolute',top:0,left:0}}><BotLeaf/></div>
+      <div style={{position:'absolute',top:0,right:0}}><BotLeaf flip/></div>
+
+      {/* ── HEADER ── */}
+      <div className="header">
+        <div className="brand">
+          <div style={{color:'var(--accent)'}}><TurtleLogo size={40}/></div>
+          <div>
+            <div className="brand-wordmark">MoonTurtle</div>
+            <div className="brand-sub">True-Sky Sidereal · 13 Moons</div>
+          </div>
+        </div>
+        <div className="nav-controls">
+          <button className="today-btn" onClick={goToday}>Today</button>
+          <button className="nav-btn" onClick={prevMonth}>←</button>
+          <div className="month-label">{MONTHS[viewMonth]} {viewYear}</div>
+          <button className="nav-btn" onClick={nextMonth}>→</button>
+        </div>
+      </div>
+
+      {/* ── MOON BANNER ── */}
+      <div className="moon-banner">
+        <div>
+          <div className="banner-moon-num">Moon {bannerMoon.moon.roman}</div>
+          <div className="banner-moon-name">{bannerMoon.moon.name}</div>
+          <div className="banner-moon-sign">{bannerMoon.moon.sym} {bannerMoon.moon.sign} · {bannerMoon.moon.el}</div>
+        </div>
+
+        <div className="banner-divider"/>
+
+        <div>
+          <div style={{fontSize:10,letterSpacing:'0.14em',color:'var(--text-dim)',textTransform:'uppercase',marginBottom:4}}>Today</div>
+          <div style={{fontSize:22,fontStyle:'italic',lineHeight:1}}>{phaseName(todayPhase)}</div>
+          <div style={{fontSize:12,color:'var(--text-dim)',marginTop:5}}>
+            {todayMoon.moon.roman} · Day {todayMoon.dayInMoon} of {todayMoon.totalDays}
+          </div>
+        </div>
+
+        <div className="banner-divider"/>
+
+        <div className="progress-wrap">
+          <div className="progress-label">
+            <span>Sidereal cycle</span>
+            <span>{Math.round(todayMoon.progress * 100)}%</span>
+          </div>
+          <div className="progress-track">
+            <div className="progress-fill" style={{width:`${todayMoon.progress*100}%`}}/>
+          </div>
+          <div className="progress-days">{todayMoon.dayInMoon} / {todayMoon.totalDays} days · {todayMoon.moon.name}</div>
+        </div>
+
+        <div style={{marginLeft:'auto',flexShrink:0}}>
+          <MoonPhaseIcon date={today} size={52}/>
+        </div>
+      </div>
+
+      {/* ── CALENDAR GRID ── */}
+      <div className="calendar-wrap">
+        <div className="weekday-row">
+          {DAYS.map(d => <div key={d} className="weekday-cell">{d}</div>)}
+        </div>
+        <div className="days-grid">
+          {cells.map((date, i) => {
+            if (!date) return <div key={`e${i}`} className="day-cell empty"/>;
+            const sm  = getSiderealMoon(date);
+            const cls = [
+              'day-cell',
+              isToday(date)   ? 'today'    : '',
+              isMoonStart(date) ? 'moon-start' : '',
+              selected && selected.getTime() === date.getTime() ? 'selected' : '',
+            ].filter(Boolean).join(' ');
+            return (
+              <div key={i} className={cls}
+                onClick={() => setSelected(s => s?.getTime()===date.getTime() ? null : date)}>
+                <div className="day-num-row">
+                  <div className="day-num">{date.getDate()}</div>
+                  {isMoonStart(date) && (
+                    <div className="moon-tag">{sm.moon.roman}</div>
+                  )}
+                </div>
+                <div className="day-moon-icon">
+                  <MoonPhaseIcon date={date} size={34}/>
+                </div>
+                {tweaks.showSiderealDay && (
+                  <div className="day-sidereal">
+                    <span className="day-sign">{sm.moon.sym}</span>{' '}Day {sm.dayInMoon}
+                  </div>
+                )}
+                {tweaks.showPhaseName && (
+                  <div className="day-phase-name">{phaseName(getSynodicPhase(date))}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── SELECTED DAY DETAIL ── */}
+      {selected && selMoon && (
+        <div className="day-detail">
+          <div>
+            <div className="detail-label">Selected</div>
+            <div className="detail-value">
+              {selected.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+            </div>
+          </div>
+          <div className="banner-divider"/>
+          <div>
+            <div className="detail-label">Sidereal Moon</div>
+            <div className="detail-value">{selMoon.moon.name}</div>
+            <div className="detail-sub">{selMoon.moon.roman} · Day {selMoon.dayInMoon} · {selMoon.moon.sym} {selMoon.moon.sign}</div>
+          </div>
+          <div className="banner-divider"/>
+          <div>
+            <div className="detail-label">Lunar Phase</div>
+            <div className="detail-value">{phaseName(selPhase)}</div>
+            <div className="detail-sub">{Math.round(selPhase * 100)}% through synodic cycle</div>
+          </div>
+          <div style={{marginLeft:'auto'}}>
+            <MoonPhaseIcon date={selected} size={44}/>
+          </div>
+        </div>
+      )}
+
+      {/* ── 13-MOON STRIP ── */}
+      <div className="moon-strip">
+        {MOONS.map(m => (
+          <div key={m.n} className={`moon-pip${m.n === todayMoon.moon.n ? ' active' : ''}`}>
+            <div className="pip-roman">{m.roman}</div>
+            <div className="pip-symbol">{m.sym}</div>
+            <div className="pip-dot"/>
+            <div className="pip-name">{m.name.split(' ')[0]}<br/>{m.name.split(' ')[1]}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── TWEAKS PANEL ── */}
+      {tweaksVisible && (
+        <div className="tweaks-panel">
+          <div className="tweaks-heading">Tweaks</div>
+
+          <div className="tweak-group">
+            <div className="tweak-group-label">Visual Theme</div>
+            <div className="variant-list">
+              {[
+                { id:'dark_earth', label:'Dark Earth',    swatch:'#c4703e' },
+                { id:'parchment',  label:'Parchment',     swatch:'#f2e8d2' },
+                { id:'moss',       label:'Midnight Moss', swatch:'#78ab6a' },
+              ].map(v => (
+                <button key={v.id} className={`vbtn${tweaks.variant===v.id?' active':''}`}
+                  onClick={() => updateTweak('variant', v.id)}>
+                  <div className="vswatch" style={{background:v.swatch, border:'1px solid rgba(0,0,0,0.2)'}}/>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="tweak-group">
+            <div className="tweak-group-label">Day Cells</div>
+            <label className="tweak-check">
+              <input type="checkbox" checked={tweaks.showSiderealDay}
+                onChange={e => updateTweak('showSiderealDay', e.target.checked)}/>
+              Show sidereal day count
+            </label>
+            <label className="tweak-check">
+              <input type="checkbox" checked={tweaks.showPhaseName}
+                onChange={e => updateTweak('showPhaseName', e.target.checked)}/>
+              Show lunar phase name
+            </label>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
