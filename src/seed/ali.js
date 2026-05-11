@@ -25,7 +25,7 @@ export const ali = {
     },
   },
 
-  // Framework: true-sky sidereal midpoint (Mastering the Zodiac), Placidus houses.
+  // Framework: MoonTurtle true-sky sidereal via IAU boundaries, Placidus houses.
   // NOT Lahiri ayanamsa with equal 30° signs.
   expectedPlacements: {
     bodies: [

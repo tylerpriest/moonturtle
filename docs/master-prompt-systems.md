@@ -37,7 +37,7 @@ If the birth time is unknown, do not overstate Ascendant, houses, Midheaven, or 
 Give me summaries of what each system says about this person.
 
 #### 1. True-sky sidereal astrology
-Use a true-sky sidereal / visible constellation framework if possible, similar to Mastering the Zodiac, where the signs are based on actual visible constellations and unequal sign lengths.
+Use MoonTurtle's true-sky sidereal / visible constellation framework if possible: IAU constellation boundaries projected onto the ecliptic, with actual visible constellations and unequal sign lengths.
 
 Summarize their: true-sky Sun · true-sky Moon · Ascendant (if birth time known) · Midheaven (if birth time known) · main chart pattern · emotional nature · communication style · relationship pattern · life direction · core gift · core shadow · one-sentence soul pattern.
 

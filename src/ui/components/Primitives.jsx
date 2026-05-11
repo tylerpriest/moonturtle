@@ -136,7 +136,7 @@ export function TabBar({ active, onTab }) {
           <line x1="4" y1="14" x2="11" y2="14" stroke="currentColor" strokeWidth="0.6"/>
         </svg>
       )},
-    { id: 'method',  label: 'Method',
+    { id: 'method',  label: 'Settings',
       icon: (
         <svg width="20" height="20" viewBox="0 0 20 20">
           <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="0.8"/>

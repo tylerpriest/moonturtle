@@ -103,8 +103,8 @@ We pick first-crossing because it's the simplest rigorous definition. Method scr
 
 Two regression checks must pass before this is considered correct:
 
-### 1. Sanity check against MTZ's date table
-[masteringthezodiac.com/sidereal-astrology-dates](https://masteringthezodiac.com/sidereal-astrology-dates) publishes the dates the Sun enters each constellation. Our boundary table should agree within 1-2 days for sign-ingress dates. Significant disagreement means our IAU lookup or ecliptic conversion is wrong.
+### 1. Sanity check against public true-sky date tables
+Compare the generated Sun ingress dates against at least one public true-sky sidereal date table. This is a broad sanity check only; MoonTurtle's shipped convention is the reproducible IAU first-crossing table generated in this repo, not copied third-party boundary data.
 
 ### 2. Seed-user regression
 Run `computeNatal()` against the seed users in `docs/seed-users.md`:
@@ -118,4 +118,4 @@ All other body placements should match the seed-users tables within ±1°.
 
 - **Precession correction across millennia.** astronomy-engine handles precession via standard IAU 2006 models. We assume the IAU boundaries (defined 1930, fixed) drift with respect to the stars over centuries; this is a known property of using fixed boundaries and is fine for daily reading purposes.
 - **Different boundary conventions.** First-crossing is our shipped default. If we ever want MTZ-midpoint or centroid-time, swap one function and rebuild the table.
-- **Houses.** This file is signs only. Houses are computed separately via `circular-natal-horoscope-js` with the Placidus system.
+- **Houses.** This file is signs only. Houses are computed separately. Evaluate `celestine` first for Placidus; use `circular-natal-horoscope-js` only as a fallback if verification fails.

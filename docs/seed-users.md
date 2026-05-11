@@ -2,7 +2,9 @@
 
 Two real users. Both are voice-calibration exemplars and astronomical regression fixtures. **Every astronomy change must pass for both.**
 
-**Astronomy framework:** true-sky sidereal midpoint (Mastering the Zodiac), Placidus houses. NOT Lahiri ayanamsa with equal 30° signs. The placements below are MTZ-method placements; equal-sign sidereal calculations may differ by 1-3° at sign boundaries. See `docs/master-prompt.md` § "Astronomy framework" for the open task on which library/approach to adopt.
+**Astronomy framework:** MoonTurtle true-sky sidereal via IAU 1930 constellation boundaries projected onto the ecliptic, first-crossing convention, Placidus houses. NOT tropical. NOT Lahiri ayanamsa with equal 30° signs. NOT copied MTZ boundary data.
+
+The placements below began as prototype/voice fixtures. Phase 1 must recompute them with MoonTurtle's IAU implementation and update this file if a documented convention difference appears near a sign boundary.
 
 ---
 
@@ -16,7 +18,7 @@ Two real users. Both are voice-calibration exemplars and astronomical regression
 
 **Currently:** Manly, Sydney, Australia (-33.7969, 151.2840)
 
-**Expected sidereal placements** (true-sky / MTZ — from existing demo data; Phase 1 astronomy must reproduce within ±1°)
+**Expected sidereal placements** (prototype true-sky fixture — Phase 1 astronomy must reproduce or document any IAU-convention delta)
 
 | Body | Sign | House |
 |---|---|---|
@@ -36,9 +38,9 @@ Two real users. Both are voice-calibration exemplars and astronomical regression
 | **Ascendant** | **Gemini** | — |
 | **Midheaven** | **Aries** | — |
 
-**Spica check:** Tyler's Sun must come out Pisces sidereal. If your implementation returns Aries, ayanamsa is not being applied / MTZ boundaries not respected.
+**Spica check:** Tyler's Sun must come out Pisces under MoonTurtle's true-sky sign lookup. If your implementation returns Aries, the IAU boundary table is wrong or bypassed.
 
-**Voice exemplar:** Tyler's full curated 5-section reading is hard-coded into the current `src/data.js`. After the Phase-0 restructure it becomes `src/seed/tyler.js` and is referenced verbatim as the first `<exemplar>` block in `src/reading/prompt/05-exemplars.md`.
+**Voice exemplar:** Tyler's full curated 5-section reading lives in `src/seed/tyler.js` and is referenced verbatim as the first `<exemplar>` block in `src/reading/prompt/05-exemplars.md`.
 
 Phase 2 TODO: generate a full 25-part master prompt output for Tyler matching today's date and Manly Sydney, to give exemplar parity with Ali.
 
@@ -54,7 +56,7 @@ Phase 2 TODO: generate a full 25-part master prompt output for Tyler matching to
 
 **Currently:** Sydney, NSW, Australia (-33.8688, 151.2093)
 
-**Expected sidereal placements** (true-sky midpoint / MTZ, Placidus houses — confirmed from the canonical reading at `docs/exemplars/ali-daily-2026-05-09.md`)
+**Expected sidereal placements** (prototype true-sky fixture, Placidus houses — confirmed from the canonical voice reading at `docs/exemplars/ali-daily-2026-05-09.md`; recompute under IAU convention in Phase 1)
 
 | Body | Sign | House | Notes |
 |---|---|---|---|
@@ -76,7 +78,7 @@ Phase 2 TODO: generate a full 25-part master prompt output for Tyler matching to
 | **IC** | **Pisces** | — | |
 
 **Distinguishing checks for Ali:**
-- Sun sidereal Gemini (tropical Cancer — boundary case; verify MTZ midpoint puts late June in Gemini)
+- Sun sidereal Gemini (tropical Cancer — boundary case; verify MoonTurtle's IAU convention keeps late June in Gemini)
 - Ascendant Sagittarius (depends on confirmed 17:58 AEST)
 - Jupiter is the **chart ruler** — should be flagged as such in the natal output
 - The Scorpio 11th-house stellium (Moon + Jupiter + Uranus) is the dominant emotional signature

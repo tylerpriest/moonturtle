@@ -1,0 +1,15 @@
+[
+  { "sign": "Aries", "startDeg": 28.0 },
+  { "sign": "Taurus", "startDeg": 53.5 },
+  { "sign": "Gemini", "startDeg": 90.4 },
+  { "sign": "Cancer", "startDeg": 118.2 },
+  { "sign": "Leo", "startDeg": 138.2 },
+  { "sign": "Virgo", "startDeg": 174.0 },
+  { "sign": "Libra", "startDeg": 218.0 },
+  { "sign": "Scorpio", "startDeg": 241.0 },
+  { "sign": "Ophiuchus", "startDeg": 248.0 },
+  { "sign": "Sagittarius", "startDeg": 266.0 },
+  { "sign": "Capricorn", "startDeg": 302.0 },
+  { "sign": "Aquarius", "startDeg": 328.0 },
+  { "sign": "Pisces", "startDeg": 351.0 }
+]

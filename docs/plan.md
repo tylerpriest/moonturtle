@@ -22,6 +22,10 @@ The product philosophy is non-negotiable and shapes every choice below:
 
 These are the load-bearing decisions. Re-read them before adding a feature or refactoring.
 
+For UI work, also read `docs/design-rules.md`. It is the canonical visual and interaction guide.
+
+For Phase 1 implementation, read `docs/phase-1-build-contract.md`, `docs/astronomy-spec.md`, `docs/signal-ranking.md`, `docs/data-privacy-storage.md`, `docs/failure-states.md`, `docs/prompt-ops.md`, and `docs/testing-checklist.md`.
+
 1. **The reading is the product.** Everything else — chart, sky, journal — exists to serve the daily reading. When in doubt, optimise the path that produces today's reading.
 2. **Voice is the soul.** The system prompt is a first-class artifact, version-controlled like code. Voice changes are PR-reviewed, regression-tested against both Tyler and Ali exemplars, and batched to preserve prompt-cache hits.
 3. **The master prompt (`docs/master-prompt.md`) is the source of voice truth.** The API system prompt is a curation of its 25 parts into the UI's 5 sections. Always re-read the master prompt before tuning voice.
@@ -53,7 +57,7 @@ moonturtle/
     screens/{Today,Sky,Natal,Method,Journal,Onboarding}.jsx
     theme/styles.css
   domain/                      ← astrology language (slow-changing, pure)
-    astronomy.js               ← computeNatal, computeSky, Lahiri ayanamsa
+    astronomy.js               ← computeNatal, computeSky, IAU true-sky signs
     schema.js                  ← Reading / NatalChart / CurrentSky / Place shapes
   reading/                     ← the product (medium-fast change, voice tuning)
     prompt/                    ← system prompt blocks — voice lives HERE, not in docs
@@ -107,7 +111,7 @@ docs/
 
 ### Astronomy — true-sky sidereal from IAU constellation boundaries (open-source, built ourselves)
 
-The master prompt requires **true-sky sidereal** with unequal constellation sizes including **Ophiuchus**. The MTZ project publishes one set of boundaries via their "midpoint method," but we don't need to copy them — the underlying data is **open**.
+The master prompt requires **true-sky sidereal** with unequal constellation sizes including **Ophiuchus**. Do not copy proprietary MTZ boundary data. Use open astronomical sources and document every convention.
 
 **Approach: compute it ourselves from IAU data.**
 
@@ -149,11 +153,16 @@ This is **first-crossing convention**: a constellation owns ecliptic longitudes 
 4. **Aligned with the master prompt.** Re-read the verbatim: *"ideally similar to the Mastering the Zodiac true sidereal midpoint method"* — *similar to*, not *copied from*. MTZ is one valid approach. We do our own and use MTZ as a sanity-check reference, not a data source.
 5. **Trivially extensible.** Once we have the IAU-projection pipeline, switching boundary conventions or adding "deep constellation" overlays (Sabian-style degree symbols, fixed stars) is the same machinery.
 
-**Libraries:**
-- **`astronomy-engine`** (Don Cross, MIT, ~35KB gzip, pure JS) — provides ecliptic longitudes, ecliptic-to-equatorial conversion, and the IAU `Constellation(ra, dec)` lookup. Everything we need.
-- **`circular-natal-horoscope-js`** (MIT, ~25KB gzip) — house cusps. **Use Placidus** (the Ali exemplar uses Placidus; the master prompt requires stating which house system is in use).
+**Recommended v1 tool stack:**
+- **`astronomy-engine`** (MIT, JS/browser-friendly) — primary sky engine for Sun/Moon/planet positions, moon phases, rise/set, coordinate transforms, and IAU constellation lookup.
+- **Custom IAU zodiac boundary table** — MoonTurtle-owned sign assignment from `src/domain/zodiac-boundaries.md`; no external true-sky zodiac package is trusted as the source of truth.
+- **`celestine`** (MIT, TypeScript, zero runtime dependencies) — evaluate for Placidus houses, aspects, transits, retrogrades, and signal ranking. Use its math primitives only after regression checks pass; do not use its tropical zodiac labels for MoonTurtle signs.
+- **`@fusionstrings/swiss-eph`** or **`astro-sweph`** — precision fallback candidates only. Both are Swiss Ephemeris / AGPL-family paths, so they are fine if MoonTurtle stays open-source, but they should not be the first browser/PWA dependency.
+- **`circular-natal-horoscope-js`** — older fallback for houses if `celestine` fails verification. It is Unlicense and well-starred, but last npm publish is older and it bundles Moment.
 
-**Sanity check before Phase 1 ships:** run the boundary generator, compare to MTZ's published date table on their website. Expect agreement within 1-2 days for sign-ingress dates. Run the seed-user regression at `docs/seed-users.md` — both Tyler and Ali must come out within ±1° of expected sidereal placements. Ali's Sun near the Gemini end is the diagnostic case.
+See `docs/open-source-astrology-tools.md` for source links and tradeoffs.
+
+**Sanity check before Phase 1 ships:** run the boundary generator, compare Sun ingress dates against at least one public true-sky date table as a broad sanity check, then trust the reproducible IAU table as MoonTurtle's convention. Run the seed-user regression at `docs/seed-users.md` — both Tyler and Ali must come out within tolerance. Ali's Sun near the Gemini/Cancer boundary is the diagnostic case.
 
 ### Reading engine — Claude Opus 4.7 via Cloudflare Worker
 - **Model:** `claude-opus-4-7`. Voice control is the product; Sonnet won't hold the knife-edge between contemplation and prescription.
@@ -186,7 +195,7 @@ This is **first-crossing convention**: a constellation owns ecliptic longitudes 
 - `<input type="date">` and `<input type="time">` — feels native on iOS, no library shipped.
 - **Nominatim** (OSM) for birthplace search, 500ms debounce, no API key. Fallback: Photon.
 - **`tz-lookup`** for lat/lon → IANA timezone, OR ask the user to confirm timezone (more honest).
-- **Permission screen copy fix:** currently shows "Detected: Manly, Sydney" before permission is granted — change to "We'll detect when you allow" OR add coarse IP geolocation (Cloudflare's `request.cf.city`) as the pre-permission hint.
+- **Permission screen copy:** currently uses neutral placeholder copy until permission is granted. Phase 1 can add coarse IP geolocation (`request.cf.city`) as a pre-permission hint if it feels useful.
 
 ## Phases
 
@@ -197,6 +206,8 @@ Before any code changes:
 3. Copy the design source files (`MoonTurtle App.html`, `screens-*.jsx`, etc.) into `docs/design-source/` for reference.
 4. Move the existing prototype into the new module layout — `src/components/Primitives.jsx` → `src/ui/components/Primitives.jsx`, `src/screens/*` → `src/ui/screens/*`, etc. The current Tyler-hardcoded `src/data.js` becomes `src/seed/tyler.js`.
 5. Create the empty module skeleton: `src/{domain,reading,providers,io,seed,config}/` with placeholder `index.js` files. App still compiles; nothing wired yet.
+
+**Status:** complete in this repo.
 
 ### Phase 1 — End-to-end loop (the soft launch)
 Goal: real birth → real sky → real reading, working for any user, deployed.
@@ -214,11 +225,10 @@ Goal: real birth → real sky → real reading, working for any user, deployed.
 11. **Deploy** to Cloudflare Pages.
 
 ### Phase 2 — Polish
-- Refine Lahiri ayanamsa precision (port a small lookup from the SE source rather than the linear approximation).
 - Real Journal screen pulling from `mt:journal:*` (currently hardcoded `ITEMS`).
 - Voice iteration based on real readings from Tyler + Ali + a small practitioner cohort. Generate Ali's first reading, hand-edit it to the user's taste, then add as the second `<exemplar>` block. Batch prompt edits to minimise cache invalidation.
 - "View chart wheel" CTA in NatalScreen — actually render a wheel.
-- Placidus as a Method-screen setting (use `circular-natal-horoscope-js`).
+- Placidus as a Method-screen setting after the house engine is verified (`celestine` first, `circular-natal-horoscope-js` fallback).
 - **BYO API key UI** — Settings screen lets hosted users paste their own Anthropic key (was already supported via env var for local dev).
 
 ### Deferred (do NOT do for soft launch)
@@ -236,7 +246,7 @@ Note: Phase 0 restructures the existing prototype into module folders. Paths bel
 |---|---|
 | `src/seed/tyler.js` | **MOVE FROM `src/data.js`.** Becomes one of two seed exemplars. |
 | `src/seed/ali.js` | **NEW.** Ali Sunflowers birth data + expected sidereal placements. |
-| `src/domain/astronomy.js` | **NEW.** `computeNatal`, `computeSky`, Lahiri ayanamsa. ~200 lines. |
+| `src/domain/astronomy.js` | **NEW.** `computeNatal`, `computeSky`, IAU true-sky sign lookup. |
 | `src/domain/schema.js` | **NEW.** Shape definitions for `Reading`, `NatalChart`, `CurrentSky`, `Place`. |
 | `src/reading/useReading.js` | **NEW.** React hook. Orchestrates astronomy → generate → cache. |
 | `src/reading/generate.js` | **NEW.** Calls provider, validates schema, retries on length mismatch. |
@@ -248,7 +258,7 @@ Note: Phase 0 restructures the existing prototype into module folders. Paths bel
 | `src/ui/components/Primitives.jsx` | **MOVE FROM `src/components/Primitives.jsx`.** No code changes. |
 | `src/ui/screens/Onboarding.jsx` | **MODIFY.** Real inputs, `io/geocoding`, `io/storage` writes. |
 | `src/ui/screens/TodayScreen.jsx` | **MODIFY.** Use `useReading()`, not the seed import. |
-| `src/ui/screens/SkyScreen.jsx` | **MODIFY.** Use `useReading()`. **Update "Swiss Ephemeris" copy → "Lahiri ayanamsa".** |
+| `src/ui/screens/SkyScreen.jsx` | **MODIFY.** Use `useReading()`. **Update static "Swiss Ephemeris" copy → "IAU true-sky boundaries + Astronomy Engine".** |
 | `src/ui/screens/NatalScreen.jsx` | **MODIFY.** Use `useReading()`. |
 | `src/ui/screens/JournalScreen.jsx` | **MODIFY.** Read from `io/storage` (key `mt:journal:*`). |
 | `src/ui/theme/styles.css` | **MOVE FROM `src/styles.css`.** No code changes. |
@@ -263,12 +273,12 @@ Note: Phase 0 restructures the existing prototype into module folders. Paths bel
 | `scripts/dev-byo.sh` | **NEW.** Starts CLIProxyAPI then Vite. Used by `npm run dev:byo`. |
 | `.env.local.example` | **NEW.** Documents `MT_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_BASE_URL` etc. |
 | `wrangler.toml` | **NEW.** Cloudflare Pages config. |
-| `package.json` | **MODIFY.** Add `astronomy-engine`, `circular-natal-horoscope-js`, `@anthropic-ai/sdk`, `openai`, `tz-lookup`. Add `dev:byo` script. |
+| `package.json` | **MODIFY.** Add `dev:byo` script now. Add runtime packages as Phase 1 code starts using them: `astronomy-engine`, `celestine` if verified, `tz-lookup`, provider SDKs only where the Worker actually imports them. |
 
 ## Verification
 
-1. **Regression check (astronomy — Tyler):** enter Tyler's birth → output must match the current hardcoded `MT_DATA.natal` exactly (Sun Pisces 9th, Moon Gemini 12th, Asc Gemini, etc.). If Sun comes out Aries, you forgot to subtract ayanamsa.
-2. **Regression check (astronomy — Ali):** enter 23 June 1983, 17:58 Melbourne → cross-check against a true-sky sidereal calculator (masteringthezodiac.com). Document expected placements in `docs/seed-users.md` before implementation; assert them in a test.
+1. **Regression check (astronomy — Tyler):** enter Tyler's birth → output must match `src/seed/tyler.js` and `docs/seed-users.md` within the documented tolerance (Sun Pisces 9th, Moon Gemini 12th, Asc Gemini, etc.). If Sun comes out Aries, the true-sky sign lookup is wrong or bypassed.
+2. **Regression check (astronomy — Ali):** enter 23 June 1983, 17:58 Melbourne → assert against `docs/seed-users.md`. Ali's Sun must remain Gemini under MoonTurtle's IAU convention.
 3. **Current sky sanity:** Sky screen for any timestamp + location must match a sanity-check from `timeanddate.com` (lunar illumination ±0.5%, moonrise/moonset ±2 min).
 4. **Reading shape:** generated reading must have `activations.length === 5`, `notice.length === 4`, `avoid.length === 4`. Worker retries once; logs if final response is malformed.
 5. **Voice check (no exemplar bleed):** generate readings for Ali → confirm no leaks of "Tyler," "Tauranga," or "Manly" from the exemplar. Once Ali's reading is added as a second exemplar, generate for a third test birth and check neither exemplar's specifics leak.
@@ -285,7 +295,7 @@ Note: Phase 0 restructures the existing prototype into module folders. Paths bel
 - **Time zones** — birth time is local civil; DST and historical tz changes matter. Use IANA, not numeric offsets.
 - **Exemplar bleed** — the Tyler reading in the cached system prompt risks leaking specifics into other users' readings. Mitigation: `<exemplar>` tags + explicit "do not reference its user" rule + test with non-Tyler births.
 - **First-call latency** — Opus 4.7 with adaptive thinking + cache write ≈ 5–8 s. Show a "writing your reading…" state; 60s fetch timeout.
-- **Permission screen lies** — UI currently shows "Detected: Manly, Sydney" before permission. Either change copy or add coarse IP geolocation.
+- **Tool drift** — astrology packages move fast and licensing varies. Re-check `docs/open-source-astrology-tools.md` before adding a math dependency.
 
 ## Open questions (non-blocking)
 
@@ -293,11 +303,11 @@ Note: Phase 0 restructures the existing prototype into module folders. Paths bel
 - Bring the named 13-Moon Calendar back as a Phase 2 layer on top of real astronomy, or drop entirely? (User said "actual moons" — I read that as drop for now; revisit if/when they ask.)
 - Should we expose a "long-form mode" toggle in v1, or keep the curated UI as the only surface until Phase 2? (Leaning Phase 2 — curated surface is what makes MoonTurtle distinct.)
 - The second master prompt (multi-system profile) surfaced 11 May 2026 and lives at `docs/master-prompt-systems.md`. It's a different product surface (profile, not daily) — candidate for Phase 3+. Suggested system additions documented at `docs/additional-systems.md`.
-- If a third sibling prompt for "daily readings" specifically surfaces, reserve `docs/master-prompt-daily.md`.
+- The third sibling prompt for "daily readings" lives at `docs/master-prompt-daily.md`.
 
 ## Appendix — Other open-source libraries (reference only, not adopted)
 
-If we ever need them: **`vedic_astro_npm`** ([GitHub](https://github.com/arpitasah00/vedic_astro_npm)) for Panchang/Nakshatra; **`Astrologer-API`** ([GitHub](https://github.com/g-battaglia/Astrologer-API)) Python service for SVG chart wheels; **`tz-lookup`** for lat/lon → IANA timezone (will need this in Phase 1).
+The current survey lives in `docs/open-source-astrology-tools.md`. Re-check active packages before implementation; prefer permissive, auditable libraries unless a copyleft dependency is an explicit product choice.
 
 ## Appendix — Accessing other AI conversation history
 
