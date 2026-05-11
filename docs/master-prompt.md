@@ -329,5 +329,4 @@ src/reading/prompt/05-exemplars.md  ← Tyler + Ali curated 5-section exemplars
 
 Exemplars in `docs/exemplars/`:
 - `ali-daily-2026-05-09.md` — full 25-part master prompt output for Ali on 9 May 2026 (Sydney). This is what the long-form mode targets.
-- `ali-natal-long-form.md` — earlier natal-focused reading for Ali. Voice reference.
 - Tyler's exemplar is currently only the curated 5-section reading in `src/data.js`. Phase 2 should generate a full 25-part reading for Tyler too, so both seed users have parity.

@@ -55,6 +55,5 @@ export const ali = {
   // after the curated 5-section version has been hand-edited from the long-form.
   exemplars: {
     daily: "docs/exemplars/ali-daily-2026-05-09.md",
-    natal: "docs/exemplars/ali-natal-long-form.md",
   },
 };

@@ -81,9 +81,8 @@ Phase 2 TODO: generate a full 25-part master prompt output for Tyler matching to
 - Jupiter is the **chart ruler** — should be flagged as such in the natal output
 - The Scorpio 11th-house stellium (Moon + Jupiter + Uranus) is the dominant emotional signature
 
-**Voice exemplars:**
+**Voice exemplar:**
 - Daily long-form: `docs/exemplars/ali-daily-2026-05-09.md` (full 25 parts, Saturday 9 May 2026 in Sydney)
-- Natal long-form: `docs/exemplars/ali-natal-long-form.md` (essay-style natal reading)
 
 Phase 2 TODO: distill the daily long-form into a curated 5-section JSON exemplar and add as the second `<exemplar>` block in `src/reading/prompt/05-exemplars.md`.
 
