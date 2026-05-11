@@ -1,0 +1,377 @@
+{
+  "schemaVersion": 1,
+  "name": "MoonTurtle Local Symbolic Lexicon",
+  "summary": "A MoonTurtle-authored interpretive lexicon that combines calculated true-sky sidereal placements with explicitly named symbolic systems. It is not a single-author doctrine and it is not objective astronomy.",
+  "systems": {
+    "true-sky-sidereal-astronomy": {
+      "label": "True-sky sidereal astronomy",
+      "role": "Placement framework only: IAU constellation boundaries, unequal signs, and Ophiuchus. This decides where a body is, not what it means."
+    },
+    "modern-western-astrology": {
+      "label": "Modern Western astrology",
+      "role": "Psychological sign, planet, house, and aspect meanings used for reflective interpretation."
+    },
+    "traditional-western-astrology": {
+      "label": "Traditional Western astrology",
+      "role": "Elements, modalities, planetary rulerships, angularity, and inherited house topics used selectively."
+    },
+    "lunar-cycle-practice": {
+      "label": "Lunar cycle practice",
+      "role": "Waxing, full, waning, and dark Moon language for timing, release, integration, and renewal."
+    },
+    "somatic-reflective-practice": {
+      "label": "Somatic reflective practice",
+      "role": "Body and nervous-system metaphors used as non-medical reflection prompts."
+    },
+    "moonturtle-editorial": {
+      "label": "MoonTurtle editorial synthesis",
+      "role": "The app's authored voice: agency-first, non-fatalistic, poetic, and practical."
+    }
+  },
+  "signs": {
+    "Aries": {
+      "element": "Fire",
+      "modality": "Cardinal",
+      "ruler": "Mars",
+      "keywords": ["heat", "beginning", "courage"],
+      "shadow": ["reactivity", "impatience", "forcing"],
+      "body": ["head", "heat", "urgency"],
+      "interpretiveBasis": "Cardinal fire ruled by Mars: initiation, heat, directness, appetite for action, and the courage to start before certainty arrives.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Taurus": {
+      "element": "Earth",
+      "modality": "Fixed",
+      "ruler": "Venus",
+      "keywords": ["body", "value", "steadiness"],
+      "shadow": ["stubbornness", "numbing", "possessiveness"],
+      "body": ["throat", "appetite", "grounding"],
+      "interpretiveBasis": "Fixed earth ruled by Venus: embodiment, appetite, security, patience, craft, and the slow work of trusting what has real value.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Gemini": {
+      "element": "Air",
+      "modality": "Mutable",
+      "ruler": "Mercury",
+      "keywords": ["language", "translation", "nerves"],
+      "shadow": ["scattering", "overthinking", "performing cleverness"],
+      "body": ["hands", "breath", "nervous system"],
+      "interpretiveBasis": "Mutable air ruled by Mercury: questions, movement between perspectives, language, learning, translation, and nervous-system responsiveness.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Cancer": {
+      "element": "Water",
+      "modality": "Cardinal",
+      "ruler": "Moon",
+      "keywords": ["memory", "belonging", "protection"],
+      "shadow": ["clinging", "defensiveness", "living from old weather"],
+      "body": ["chest", "stomach", "soft tissue"],
+      "interpretiveBasis": "Cardinal water ruled by the Moon: attachment, memory, family patterning, protection, emotional tides, and the need to feel held.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "lunar-cycle-practice", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Leo": {
+      "element": "Fire",
+      "modality": "Fixed",
+      "ruler": "Sun",
+      "keywords": ["heart", "visibility", "play"],
+      "shadow": ["drama", "pride", "needing applause"],
+      "body": ["heart", "spine", "warmth"],
+      "interpretiveBasis": "Fixed fire ruled by the Sun: creative vitality, visibility, pride, generosity, play, and the courage to be seen without performing.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Virgo": {
+      "element": "Earth",
+      "modality": "Mutable",
+      "ruler": "Mercury",
+      "keywords": ["craft", "discernment", "repair"],
+      "shadow": ["perfectionism", "worry", "self-correction as control"],
+      "body": ["digestion", "hands", "daily maintenance"],
+      "interpretiveBasis": "Mutable earth ruled by Mercury: refinement, usefulness, repair, discernment, ritual maintenance, and the humble intelligence of practice.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Libra": {
+      "element": "Air",
+      "modality": "Cardinal",
+      "ruler": "Venus",
+      "keywords": ["balance", "agreement", "beauty"],
+      "shadow": ["appeasement", "indecision", "outsourcing desire"],
+      "body": ["kidneys", "skin", "symmetry"],
+      "interpretiveBasis": "Cardinal air ruled by Venus: relationship, proportion, aesthetics, fairness, social intelligence, and the art of clean agreement.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Scorpio": {
+      "element": "Water",
+      "modality": "Fixed",
+      "ruler": "Mars",
+      "modernRuler": "Pluto",
+      "keywords": ["truth", "depth", "release"],
+      "shadow": ["fixation", "suspicion", "testing loyalty"],
+      "body": ["gut", "pelvis", "stored intensity"],
+      "interpretiveBasis": "Fixed water with traditional Mars rulership and modern Pluto association: intensity, secrecy, intimacy, fear, loyalty, and the work of metabolising truth.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Ophiuchus": {
+      "element": "Threshold",
+      "modality": "Mutable",
+      "ruler": null,
+      "keywords": ["medicine", "threshold", "integration"],
+      "shadow": ["over-identifying as healer", "carrying too much", "living between identities"],
+      "body": ["integration", "repair", "crossing points"],
+      "interpretiveBasis": "A true-sky constellation layer, not part of the standard twelve-sign rulership system. MoonTurtle treats Ophiuchus as threshold, medicine, repair, and integration while clearly separating that from traditional rulership doctrine.",
+      "systems": ["true-sky-sidereal-astronomy", "moonturtle-editorial", "somatic-reflective-practice"]
+    },
+    "Sagittarius": {
+      "element": "Fire",
+      "modality": "Mutable",
+      "ruler": "Jupiter",
+      "keywords": ["meaning", "faith", "horizon"],
+      "shadow": ["certainty", "restlessness", "inflating the story"],
+      "body": ["hips", "thighs", "movement"],
+      "interpretiveBasis": "Mutable fire ruled by Jupiter: meaning-making, teaching, travel of mind or body, faith, scale, and the hunger for a wider horizon.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Capricorn": {
+      "element": "Earth",
+      "modality": "Cardinal",
+      "ruler": "Saturn",
+      "keywords": ["structure", "devotion", "responsibility"],
+      "shadow": ["rigidity", "withholding", "confusing pressure with worth"],
+      "body": ["bones", "knees", "posture"],
+      "interpretiveBasis": "Cardinal earth ruled by Saturn: structure, commitment, consequence, discipline, authority, and devotion that becomes real through practice.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Aquarius": {
+      "element": "Air",
+      "modality": "Fixed",
+      "ruler": "Saturn",
+      "modernRuler": "Uranus",
+      "keywords": ["pattern", "future", "community"],
+      "shadow": ["detachment", "contrarian identity", "abstracting away feeling"],
+      "body": ["ankles", "circulation", "distance"],
+      "interpretiveBasis": "Fixed air with traditional Saturn rulership and modern Uranus association: pattern recognition, systems, distance, community, disruption, and social imagination.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    },
+    "Pisces": {
+      "element": "Water",
+      "modality": "Mutable",
+      "ruler": "Jupiter",
+      "modernRuler": "Neptune",
+      "keywords": ["dream", "mercy", "surrender"],
+      "shadow": ["porousness", "avoidance", "romantic fog"],
+      "body": ["feet", "sleep", "tears"],
+      "interpretiveBasis": "Mutable water with traditional Jupiter rulership and modern Neptune association: permeability, imagination, compassion, longing, spiritual sensitivity, and the need for gentle boundaries.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+    }
+  },
+  "bodies": {
+    "Moon": {
+      "keywords": ["body", "mood", "need", "memory"],
+      "localAction": "feel",
+      "interpretiveBasis": "The Moon is treated as daily emotional weather, body rhythm, attachment memory, instinct, and the changing pulse of the reading.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "lunar-cycle-practice", "somatic-reflective-practice"]
+    },
+    "Sun": {
+      "keywords": ["vitality", "identity", "visibility", "chapter"],
+      "localAction": "express",
+      "interpretiveBasis": "The Sun is treated as the larger chapter: vitality, identity, visibility, will, and what is being lit over a longer span.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "Mercury": {
+      "keywords": ["language", "naming", "questions", "nerves"],
+      "localAction": "name",
+      "interpretiveBasis": "Mercury is treated as language, thought, interpretation, nervous-system processing, trade, and the way a person makes experience legible.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice"]
+    },
+    "Venus": {
+      "keywords": ["value", "affection", "pleasure", "beauty"],
+      "localAction": "soften toward",
+      "interpretiveBasis": "Venus is treated as value, affection, attraction, beauty, pleasure, relational ease, and what the person is willing to receive.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "Mars": {
+      "keywords": ["action", "heat", "desire", "friction"],
+      "localAction": "act on",
+      "interpretiveBasis": "Mars is treated as heat, action, desire, severance, courage, friction, and the force that moves a person across a threshold.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice"]
+    },
+    "Jupiter": {
+      "keywords": ["expansion", "faith", "teaching", "scale"],
+      "localAction": "make room for",
+      "interpretiveBasis": "Jupiter is treated as expansion, faith, confidence, teaching, protection, excess, and the desire to find a wider frame.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "Saturn": {
+      "keywords": ["structure", "pressure", "maturity", "limits"],
+      "localAction": "give structure to",
+      "interpretiveBasis": "Saturn is treated as structure, consequence, pressure, maturity, time, limits, commitments, and the dignity of staying with reality.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "Uranus": {
+      "keywords": ["disruption", "freedom", "awakening", "new pattern"],
+      "localAction": "let change",
+      "interpretiveBasis": "Uranus is treated through modern astrology as disruption, liberation, surprise, pattern-break, and the intelligence of change.",
+      "systems": ["modern-western-astrology"]
+    },
+    "Neptune": {
+      "keywords": ["sensitivity", "longing", "imagination", "dissolving"],
+      "localAction": "listen beneath",
+      "interpretiveBasis": "Neptune is treated through modern astrology as sensitivity, longing, dreams, compassion, porousness, fog, and dissolving certainty.",
+      "systems": ["modern-western-astrology", "somatic-reflective-practice"]
+    },
+    "Pluto": {
+      "keywords": ["depth", "intensity", "truth", "transformation"],
+      "localAction": "tell the truth about",
+      "interpretiveBasis": "Pluto is treated through modern astrology as intensity, depth, power, exposure, transformation, and contact with what cannot stay hidden.",
+      "systems": ["modern-western-astrology"]
+    },
+    "North Node": {
+      "keywords": ["growth direction", "stretch", "future appetite"],
+      "localAction": "lean toward",
+      "interpretiveBasis": "The North Node is treated through modern and evolutionary astrology as growth direction, appetite for unfamiliar development, and a future-facing edge.",
+      "systems": ["modern-western-astrology"]
+    },
+    "South Node": {
+      "keywords": ["old reflex", "familiar pattern", "release"],
+      "localAction": "release the old reflex around",
+      "interpretiveBasis": "The South Node is treated through modern and evolutionary astrology as familiar patterning, old competence, residue, and what may need loosening.",
+      "systems": ["modern-western-astrology"]
+    },
+    "Chiron": {
+      "keywords": ["tenderness", "medicine", "wound", "teaching"],
+      "localAction": "tend",
+      "interpretiveBasis": "Chiron is treated through modern astrology as a tender place where wound, skill, medicine, and teaching become entangled.",
+      "systems": ["modern-western-astrology", "moonturtle-editorial"]
+    }
+  },
+  "aspects": {
+    "conjunct": {
+      "keywords": ["fusion", "meeting", "intensification"],
+      "tone": "The two symbols are sharing the same room; the signal is direct and hard to ignore.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "opposing": {
+      "keywords": ["polarity", "mirror", "tension across a line"],
+      "tone": "The two symbols face each other; the work is relationship, proportion, and not collapsing either side.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "squaring": {
+      "keywords": ["friction", "action", "creative pressure"],
+      "tone": "The two symbols press at a right angle; the signal often asks for movement, adjustment, or honest effort.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "trining": {
+      "keywords": ["flow", "support", "ease"],
+      "tone": "The two symbols move with less resistance; the signal may be available without needing force.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "sextiling": {
+      "keywords": ["opportunity", "cooperation", "small opening"],
+      "tone": "The two symbols can cooperate if the person gives the opening a little attention.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    }
+  },
+  "houses": {
+    "1": {
+      "keywords": ["body", "self-presentation", "arrival"],
+      "interpretiveBasis": "The first house is treated as embodiment, identity-in-motion, presentation, vitality, and how life meets the person at the surface.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "2": {
+      "keywords": ["resources", "money", "self-worth", "appetite"],
+      "interpretiveBasis": "The second house is treated as resources, values, possessions, money, appetite, voice, and the felt question of enough.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice"]
+    },
+    "3": {
+      "keywords": ["language", "siblings", "local movement", "learning"],
+      "interpretiveBasis": "The third house is treated as communication, learning, siblings, neighbourhood, daily movement, and the small bridges of ordinary life.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "4": {
+      "keywords": ["home", "roots", "family", "private base"],
+      "interpretiveBasis": "The fourth house is treated as home, ancestry, family, roots, emotional ground, and the private foundation underneath public life.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "5": {
+      "keywords": ["creativity", "pleasure", "children", "play"],
+      "interpretiveBasis": "The fifth house is treated as play, creativity, pleasure, romance, children, risk, and what wants expression for its own sake.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "6": {
+      "keywords": ["work", "health", "rhythm", "service"],
+      "interpretiveBasis": "The sixth house is treated as daily labour, health routines, service, maintenance, craft, and what must be tended repeatedly.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice"]
+    },
+    "7": {
+      "keywords": ["partners", "agreements", "mirrors", "contracts"],
+      "interpretiveBasis": "The seventh house is treated as partnership, agreements, contracts, open others, mirrors, and the ethics of meeting another person clearly.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "8": {
+      "keywords": ["shared resources", "intimacy", "fear", "entanglement"],
+      "interpretiveBasis": "The eighth house is treated as shared resources, debts, inheritance, intimacy, fear, vulnerability, and consequential entanglement.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice"]
+    },
+    "9": {
+      "keywords": ["belief", "travel", "study", "meaning"],
+      "interpretiveBasis": "The ninth house is treated as belief, philosophy, long-distance travel, higher study, teaching, law, and the horizon that gives life meaning.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "10": {
+      "keywords": ["vocation", "visibility", "authority", "public path"],
+      "interpretiveBasis": "The tenth house is treated as vocation, public role, reputation, authority, accountability, and the visible arc of a life.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "11": {
+      "keywords": ["friends", "community", "future", "networks"],
+      "interpretiveBasis": "The eleventh house is treated as friends, communities, networks, allies, patrons, hopes, and the future a person builds with others.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+    },
+    "12": {
+      "keywords": ["solitude", "dreams", "hidden patterns", "retreat"],
+      "interpretiveBasis": "The twelfth house is treated as solitude, retreat, dreams, hidden patterns, grief, spirit, institutions, and what asks to be met quietly.",
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice"]
+    }
+  },
+  "moonPhases": {
+    "New Moon": {
+      "keywords": ["seed", "dark", "beginning"],
+      "interpretiveBasis": "A beginning in low visibility: set direction gently, do not demand proof too soon.",
+      "systems": ["lunar-cycle-practice", "moonturtle-editorial"]
+    },
+    "Waxing Crescent": {
+      "keywords": ["emergence", "first motion", "tending"],
+      "interpretiveBasis": "Early growth: protect what is beginning and give it one concrete next step.",
+      "systems": ["lunar-cycle-practice", "moonturtle-editorial"]
+    },
+    "First Quarter": {
+      "keywords": ["choice", "friction", "commitment"],
+      "interpretiveBasis": "A turning point: act, choose, and let friction clarify what matters.",
+      "systems": ["lunar-cycle-practice", "moonturtle-editorial"]
+    },
+    "Waxing Gibbous": {
+      "keywords": ["refinement", "build", "adjustment"],
+      "interpretiveBasis": "Growth through adjustment: improve the shape before the reveal.",
+      "systems": ["lunar-cycle-practice", "moonturtle-editorial"]
+    },
+    "Full Moon": {
+      "keywords": ["reveal", "culmination", "reflection"],
+      "interpretiveBasis": "Full visibility: see what has ripened without turning revelation into panic.",
+      "systems": ["lunar-cycle-practice", "moonturtle-editorial"]
+    },
+    "Waning Gibbous": {
+      "keywords": ["integration", "teaching", "meaning"],
+      "interpretiveBasis": "After the reveal: digest the information and share only what has become clear.",
+      "systems": ["lunar-cycle-practice", "moonturtle-editorial"]
+    },
+    "Last Quarter": {
+      "keywords": ["editing", "release", "reorientation"],
+      "interpretiveBasis": "A release point: simplify, cut excess, and reorient around what remains true.",
+      "systems": ["lunar-cycle-practice", "moonturtle-editorial"]
+    },
+    "Waning Crescent": {
+      "keywords": ["rest", "compost", "completion"],
+      "interpretiveBasis": "End of cycle: rest, compost, forgive, and resist making the quiet mean failure.",
+      "systems": ["lunar-cycle-practice", "moonturtle-editorial"]
+    }
+  }
+}

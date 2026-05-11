@@ -1,18 +1,13 @@
-const WORDS_BY_SIGN = {
-  Aries: ['heat', 'beginning', 'courage'],
-  Taurus: ['body', 'value', 'steadiness'],
-  Gemini: ['language', 'translation', 'nerves'],
-  Cancer: ['memory', 'belonging', 'protection'],
-  Leo: ['heart', 'visibility', 'play'],
-  Virgo: ['craft', 'discernment', 'repair'],
-  Libra: ['balance', 'agreement', 'beauty'],
-  Scorpio: ['truth', 'depth', 'release'],
-  Ophiuchus: ['medicine', 'threshold', 'integration'],
-  Sagittarius: ['meaning', 'faith', 'horizon'],
-  Capricorn: ['structure', 'devotion', 'responsibility'],
-  Aquarius: ['pattern', 'future', 'community'],
-  Pisces: ['dream', 'mercy', 'surrender'],
-};
+import {
+  actionForBody,
+  aspectEntry,
+  bodyEntry,
+  houseEntry,
+  keywordsForSign,
+  moonPhaseEntry,
+  readingSourceMetadata,
+  signEntry,
+} from './lexicon/index.js';
 
 function ordinal(n) {
   if (n === 1) return '1st';
@@ -21,23 +16,8 @@ function ordinal(n) {
   return `${n}th`;
 }
 
-const BODY_ACTIONS = {
-  Moon: 'feel',
-  Sun: 'express',
-  Mercury: 'name',
-  Venus: 'soften toward',
-  Mars: 'act on',
-  Jupiter: 'make room for',
-  Saturn: 'give structure to',
-  Uranus: 'let change',
-  Neptune: 'listen beneath',
-  Pluto: 'tell the truth about',
-  'North Node': 'lean toward',
-  'South Node': 'release the old reflex around',
-};
-
 function wordsFor(sign) {
-  return WORDS_BY_SIGN[sign] ?? ['attention', 'pattern', 'presence'];
+  return keywordsForSign(sign);
 }
 
 function housePhrase(house) {
@@ -56,7 +36,8 @@ function topSignals(signals) {
 function makeHeadline(currentSky, signals) {
   const loud = topSignals(signals);
   if (loud[0]) {
-    return `${loud[0].transitingBody} is making today specific.`;
+    const planet = bodyEntry(loud[0].transitingBody).keywords?.[0] ?? loud[0].transitingBody;
+    return `${loud[0].transitingBody} is bringing ${planet} into focus.`;
   }
   return `A ${currentSky.lunar.phase.toLowerCase()} in ${currentSky.lunar.moonSign} day.`;
 }
@@ -64,18 +45,28 @@ function makeHeadline(currentSky, signals) {
 function makeBody({ natalChart, currentSky, signals }) {
   const moon = findBody(natalChart, 'Moon');
   const loud = topSignals(signals);
-  const opening = `The Moon is in ${currentSky.lunar.moonSign} and ${currentSky.lunar.illumination}% lit, so the day has a ${currentSky.lunar.phase.toLowerCase()} tone: notice what is already in motion before forcing a new shape.`;
+  const phase = moonPhaseEntry(currentSky.lunar.phase);
+  const moonSign = signEntry(currentSky.lunar.moonSign);
+  const moonKeywords = (moonSign.keywords ?? wordsFor(currentSky.lunar.moonSign)).slice(0, 3).join(', ');
+  const phaseKeywords = (phase.keywords ?? []).slice(0, 2).join(' and ');
+  const opening = `The Moon is in ${currentSky.lunar.moonSign} and ${currentSky.lunar.illumination}% lit, so the day carries ${moonKeywords}. In the ${currentSky.lunar.phase.toLowerCase()} phase, the lunar cycle leans toward ${phaseKeywords || 'attention'}: ${phase.interpretiveBasis}`;
   if (!loud.length) {
-    return `${opening} Your natal Moon in ${moon?.sign ?? 'your chart'} is the easiest place to begin: let the body tell you what the mind has been trying to over-explain.`;
+    const natalMoon = signEntry(moon?.sign);
+    return `${opening} Your natal Moon in ${moon?.sign ?? 'your chart'} is the easiest place to begin: let ${natalMoon.keywords?.[0] ?? 'the body'} speak before the mind turns the day into a theory.`;
   }
-  const signalText = loud.map((signal) => signal.title.toLowerCase()).join('; ');
-  return `${opening} The loudest natal contact is ${signalText}. Treat that as a weather report, not an order: feel the pressure, choose the response, and make one honest adjustment.`;
+  const signalText = loud.map((signal) => {
+    const aspect = aspectEntry(signal.aspect);
+    return `${signal.title.toLowerCase()} (${aspect.keywords?.[0] ?? signal.aspect})`;
+  }).join('; ');
+  return `${opening} The loudest natal contact is ${signalText}. Treat that as symbolic weather, not an order: feel the pressure, choose the response, and make one honest adjustment.`;
 }
 
 function makeLunarAxis(natalChart, currentSky) {
   const natalMoon = findBody(natalChart, 'Moon');
   const natalWords = wordsFor(natalMoon?.sign);
   const currentWords = wordsFor(currentSky.lunar.moonSign);
+  const currentSign = signEntry(currentSky.lunar.moonSign);
+  const natalSign = signEntry(natalMoon?.sign);
   return {
     natal: {
       sign: natalMoon?.sign ?? 'Unknown',
@@ -86,19 +77,25 @@ function makeLunarAxis(natalChart, currentSky) {
       sign: currentSky.lunar.moonSign,
       words: currentWords,
     },
-    reading: `Let ${currentWords[0]} speak to ${natalWords[0]}. The current Moon is not asking you to become someone else; it is asking your familiar emotional pattern to move in today's language.`,
+    reading: `Let ${currentWords[0]} speak to ${natalWords[0]}. The current Moon is carrying ${currentSign.element ? `${currentSign.element.toLowerCase()} ` : ''}${currentWords[1] ?? 'weather'}, while your natal Moon remembers ${natalWords[1] ?? natalSign.element?.toLowerCase() ?? 'its own rhythm'}. The work is translation, not obedience: let today's sky give your familiar emotional pattern a temporary language.`,
   };
 }
 
 function makeActivations(signals) {
   return topSignals(signals).map((signal) => {
-    const action = BODY_ACTIONS[signal.transitingBody] ?? 'notice';
+    const action = actionForBody(signal.transitingBody);
+    const planet = bodyEntry(signal.transitingBody);
+    const skySign = signEntry(signal.transitingSign);
+    const natalSign = signEntry(signal.natalSign);
+    const aspect = aspectEntry(signal.aspect);
+    const house = signal.natalHouse ? houseEntry(signal.natalHouse) : null;
+    const houseText = house ? ` The house layer adds ${house.keywords?.slice(0, 2).join(' and ')}.` : '';
     return {
       title: signal.title,
       activates: signal.activates,
-      theme: signal.theme,
+      theme: `${signal.transitingBody} brings ${planet.keywords?.slice(0, 2).join(' and ') || 'attention'} through ${signal.transitingSign}'s ${skySign.keywords?.join(', ') || 'symbolic field'}. Because it is ${signal.aspect} natal ${signal.natalTarget}${signal.natalSign ? ` in ${signal.natalSign}` : ''}, the tone is ${aspect.keywords?.slice(0, 2).join(' and ') || signal.aspect}: ${aspect.tone ?? signal.theme}${houseText}`,
       question: `What would it mean to ${action} this without making it absolute?`,
-      insight: `${signal.reasons.join(' · ')}.`,
+      insight: `${signal.reasons.join(' · ')}. Interpreted through ${planet.systems?.includes('traditional-western-astrology') ? 'traditional and modern Western astrology' : 'modern Western astrology'}${natalSign.systems?.includes('true-sky-sidereal-astronomy') ? ', with the true-sky constellation layer named separately' : ''}.`,
       score: signal.score,
     };
   });
@@ -107,10 +104,13 @@ function makeActivations(signals) {
 function makeNotice({ natalChart, currentSky, signals }) {
   const loud = topSignals(signals);
   const mercury = findBody(natalChart, 'Mercury');
+  const phase = moonPhaseEntry(currentSky.lunar.phase);
+  const moonSign = signEntry(currentSky.lunar.moonSign);
   return [
-    `The body tone of a ${currentSky.lunar.phase.toLowerCase()}: finish, refine, compost, or clarify before beginning again.`,
+    `The body tone of a ${currentSky.lunar.phase.toLowerCase()}: ${phase.keywords?.join(', ') || 'notice the cycle'} without turning the symbol into a command.`,
     loud[0] ? `Where ${loud[0].transitingBody} touches natal ${loud[0].natalTarget}, the day may feel more charged than usual.` : `The Moon in ${currentSky.lunar.moonSign} may make ${wordsFor(currentSky.lunar.moonSign).join(', ')} feel louder.`,
-    mercury ? `Your chart ruler Mercury in ${mercury.sign} wants the day to become legible, not perfect.` : 'Notice the first honest sentence before polishing it.',
+    mercury ? `Your Mercury in ${mercury.sign} wants the day to become legible, not perfect.` : 'Notice the first honest sentence before polishing it.',
+    moonSign.body?.length ? `Somatically, ${currentSky.lunar.moonSign} can be watched through ${moonSign.body.join(', ')} as metaphor, not diagnosis.` : 'Watch the body as a metaphor layer, not as a diagnosis.',
   ];
 }
 
@@ -129,6 +129,7 @@ function localReading(input) {
   return {
     schemaVersion: 1,
     source: 'local-symbolic-engine',
+    sourceDetail: readingSourceMetadata({ currentSky, signals }),
     generatedAt: new Date().toISOString(),
     dateKey: currentSky.localDateKey,
     headline: makeHeadline(currentSky, signals),
@@ -170,6 +171,23 @@ function providerPayload({ natalChart, currentSky, signals }) {
       activationSignals: signals.activationSignals,
       supportingSignals: signals.supportingSignals.slice(0, 4),
     },
+  };
+}
+
+function providerSourceMetadata(mode) {
+  return {
+    label: mode === 'api-key' ? 'AI synthesis with your provider key' : 'AI synthesis',
+    summary: 'The astronomy and ranked signals are calculated locally first, then an AI provider writes fuller prose from those receipts.',
+    systems: [
+      'True-sky sidereal astronomy',
+      'Modern Western astrology',
+      'Traditional Western astrology',
+      'Lunar cycle practice',
+      'Somatic reflective practice',
+      'MoonTurtle editorial synthesis',
+      'AI language synthesis',
+    ],
+    caveat: 'The provider writes the prose; it does not make the astronomy more objective or more authoritative.',
   };
 }
 
@@ -218,6 +236,7 @@ export async function generateReading(input) {
       ...local,
       ...remote,
       source: remote.source ?? 'provider',
+      sourceDetail: providerSourceMetadata(aiMode(input.settings)),
       providerAttempted: true,
       dateKey: local.dateKey,
     };
