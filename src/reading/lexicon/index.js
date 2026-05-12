@@ -9,7 +9,7 @@ const DEFAULT_ENTRY = {
 };
 
 export const SYMBOLIC_LEXICON = lexicon;
-export const SOURCE_METADATA_VERSION = 'local-synthesis-v4';
+export const SOURCE_METADATA_VERSION = 'local-synthesis-v5';
 
 export function systemLabels(ids = []) {
   return [...new Set(ids)]

@@ -6,9 +6,8 @@ Do not include everything. The deterministic signal engine ranks the sky first; 
 
 Explain how today's cosmic signals interact with the chart, what they ask the person to feel, notice, release, express, or act on, and how the day can be met well without fatalism or command language.
 
-The UI needs two reading densities:
+The Today screen needs one clear reading density:
 
-- quick glance: 3-5 high-signal points
-- full reading: the careful, beautiful interpretation
+- daily basic: a careful, useful interpretation of the loudest one to three signals
 
 Receipts are rendered separately. The model should synthesize, not list every calculation.

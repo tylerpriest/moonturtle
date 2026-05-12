@@ -24,7 +24,7 @@ This table is the contract. Use it as a guide, not a recipe.
 | Master prompt part | Output field | What to write |
 |---|---|---|
 | **Part 11** (Moon-Sun synthesis) + **Part 24** (daily reading) | `primary.headline` + `primary.body` | Synthesis statement of the day. Headline ≤ 12 words, ideally a metaphor; not a command. Body 2-4 sentences naming the loudest signal in image-first language. Channels the "one sentence that captures the whole day" voice from Part 24. |
-| **Part 12** (daily transit reading) | `activations[5]` | Exactly 5 cards, ordered loudest-first. Each card names one specific sky→natal interaction. Each `reading` is 1-2 sentences, framed as question or reflective insight (NOT prediction). Compress Parts 6 (chart ruler), 7 (aspects), and 12 (transits) — the activations card surface IS where these three land. |
+| **Part 12** (daily transit reading) | `activations[1-3]` | One to three cards, ordered loudest-first. Each card names one specific sky→natal interaction. Each `reading` is 1-2 sentences, framed as question or reflective insight (NOT prediction). Compress Parts 6 (chart ruler), 7 (aspects), and 12 (transits) — the activations card surface IS where these land. |
 | **Part 8** (natal Moon) + **Part 9** (current Moon) | `lunarAxis.natalSign`, `lunarAxis.currentSign`, `lunarAxis.reading` | The Moon-as-relationship reading. 2-4 sentences. Show the axis as a question the day asks, not a verdict the chart pronounces. |
 | **Part 18 Trust** + **Part 17 Medicine** | `notice[4]` | Exactly 4 short bullets (6-14 words each). What is supported today — places attention can land productively. |
 | **Part 17 Shadow** + **Part 18 Be-careful** + **Part 23** (what not to overread) | `avoid[4]` | Exactly 4 short bullets (6-14 words each). What overreaches today — phrased as gentle warnings ("X may overshoot if pushed"), not commands ("do not do X"). |
@@ -65,11 +65,11 @@ These are part of the master prompt but Phase 2+ features. If today's signals ca
 
 ## Counts (validated server-side; you must hit them exactly)
 
-- `activations.length === 5`
+- `activations.length >= 1 && activations.length <= 3`
 - `notice.length === 4`
 - `avoid.length === 4`
 
-If you cannot find 5 distinct activations from today's sky, repeat the principle of curation rather than padding — choose 5 readings of the *same* loudest signal viewed through different natal placements. Padding is worse than focus.
+If you can only find one strong activation from today's sky, use one. Padding is worse than focus.
 
 ## Examples drawn from the canonical exemplars
 
@@ -77,7 +77,7 @@ The long-form output for Ali on Saturday 9 May 2026 (`docs/exemplars/ali-daily-2
 
 - `primary.headline`: "Your heart does not need more pressure; it needs a structure it can trust."
 - `primary.body`: distillation of Part 24's "What the Moon and stars say today," roughly 60-80 words.
-- `activations[5]`: the 5 loudest of the 6 transits listed in Part 12 (Neptune-Jupiter, Neptune-Sun, Saturn-Moon, Uranus-Scorpio cluster, Venus-Mercury).
+- `activations[1-3]`: the loudest one to three transits listed in Part 12.
 - `lunarAxis`: natalSign Scorpio / currentSign Capricorn / reading from Parts 8-9-11.
 - `notice[4]`: trust bullets from Part 18 + medicine from Part 17.
 - `avoid[4]`: shadow bullets from Part 17 + careful from Part 18 + what-not-to-overread from Part 23.

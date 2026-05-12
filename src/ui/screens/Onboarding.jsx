@@ -4,6 +4,8 @@ import { searchPlaces, reversePlaceName } from '../../io/geocoding.js';
 import { lookupTimeZone } from '../../io/timezone.js';
 import { DEMO_USER } from '../../io/storage.js';
 
+const IS_DEV = import.meta.env.DEV;
+
 function InputField({ label, hint, ...props }) {
   return (
     <label className="onboard-field">
@@ -43,6 +45,7 @@ export function BirthSetup({ onNext }) {
   const [displayName, setDisplayName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [birthTime, setBirthTime] = useState('');
+  const [birthTimeUnknown, setBirthTimeUnknown] = useState(false);
   const [birthPlaceQuery, setBirthPlaceQuery] = useState('');
   const [birthPlace, setBirthPlace] = useState(null);
   const [birthTimeZone, setBirthTimeZone] = useState('');
@@ -73,6 +76,7 @@ export function BirthSetup({ onNext }) {
     setDisplayName(DEMO_USER.displayName);
     setBirthDate(DEMO_USER.birth.date);
     setBirthTime(DEMO_USER.birth.time);
+    setBirthTimeUnknown(false);
     setBirthPlace(DEMO_USER.birth.place);
     setBirthPlaceQuery(DEMO_USER.birth.place.name);
     setBirthTimeZone(DEMO_USER.birth.timeZone);
@@ -90,14 +94,15 @@ export function BirthSetup({ onNext }) {
       return;
     }
     const place = birthPlace;
+    const timeKnown = !birthTimeUnknown && Boolean(birthTime);
     onNext({
       schemaVersion: 1,
       displayName: displayName.trim() || 'You',
       birth: {
         date: birthDate,
-        time: birthTime,
+        time: timeKnown ? birthTime : '',
         timeZone: birthTimeZone || lookupTimeZone(place.lat, place.lon),
-        timeKnown: Boolean(birthTime),
+        timeKnown,
         place,
       },
     });
@@ -125,7 +130,25 @@ export function BirthSetup({ onNext }) {
 
         <InputField label="Name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name"/>
         <InputField label="Birth date" type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)}/>
-        <InputField label="Exact birth time" type="time" value={birthTime} onChange={(event) => setBirthTime(event.target.value)} hint="Leave blank only if the time is unknown."/>
+        <InputField
+          label="Exact birth time"
+          type="time"
+          value={birthTime}
+          onChange={(event) => setBirthTime(event.target.value)}
+          disabled={birthTimeUnknown}
+          hint={birthTimeUnknown ? 'Angles and houses will be omitted when time is unknown.' : 'Use the recorded time if you know it.'}
+        />
+        <label className="onboard-check">
+          <input
+            type="checkbox"
+            checked={birthTimeUnknown}
+            onChange={(event) => {
+              setBirthTimeUnknown(event.target.checked);
+              if (event.target.checked) setBirthTime('');
+            }}
+          />
+          <span>I don’t know my birth time</span>
+        </label>
         <InputField
           label="Birthplace"
           value={birthPlaceQuery}
@@ -155,9 +178,14 @@ export function BirthSetup({ onNext }) {
           </div>
         )}
 
-        <ManualPlaceButton place={DEMO_USER.birth.place} onClick={useDevProfile}>
-          Quick add Tyler dev profile
-        </ManualPlaceButton>
+        {IS_DEV && (
+          <div className="dev-only-block">
+            <div className="eyebrow">Dev only</div>
+            <ManualPlaceButton place={DEMO_USER.birth.place} onClick={useDevProfile}>
+              Quick add Tyler dev profile
+            </ManualPlaceButton>
+          </div>
+        )}
 
         <div style={{height:16}}/>
 
@@ -173,6 +201,9 @@ export function BirthSetup({ onNext }) {
 export function Permission({ draftUser, onDone }) {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [currentPlaceQuery, setCurrentPlaceQuery] = useState('');
+  const [currentPlace, setCurrentPlace] = useState(null);
+  const [results, setResults] = useState([]);
 
   function finish(place, mode = 'manual') {
     const timeZone = lookupTimeZone(place.lat, place.lon);
@@ -208,6 +239,33 @@ export function Permission({ draftUser, onDone }) {
       },
       { enableHighAccuracy: false, maximumAge: 900000, timeout: 10000 },
     );
+  }
+
+  async function handleManualSearch() {
+    if (!currentPlaceQuery.trim()) {
+      setStatus('Enter your current city, region, or country first.');
+      return;
+    }
+    setStatus('Searching places...');
+    const found = await searchPlaces(currentPlaceQuery.trim());
+    setResults(found);
+    setStatus(found.length ? 'Choose your current place below.' : 'No matches found. Try city, region, country.');
+  }
+
+  function chooseManualPlace(result) {
+    const place = placeFromResult(result);
+    setCurrentPlace(place);
+    setCurrentPlaceQuery(place.name);
+    setResults([]);
+    setStatus(`Using ${place.name} for today's sky.`);
+  }
+
+  function finishManual() {
+    if (!currentPlace) {
+      setStatus('Find and choose your current place before continuing manually.');
+      return;
+    }
+    finish(currentPlace, 'manual');
   }
 
   return (
@@ -252,11 +310,59 @@ export function Permission({ draftUser, onDone }) {
 
         {status && <p className="meta" style={{marginTop:12}}>{status}</p>}
 
+        <div style={{height:18}}/>
+
+        <div className="card" style={{padding:'16px 18px'}}>
+          <div className="section-label">Set manually</div>
+          <InputField
+            label="Current place"
+            value={currentPlaceQuery}
+            onChange={(event) => {
+              setCurrentPlaceQuery(event.target.value);
+              setCurrentPlace(null);
+            }}
+            placeholder="City, region, country"
+          />
+          <button className="btn btn-ghost onboard-find-button" type="button" onClick={handleManualSearch}>
+            Find Current Place
+          </button>
+          {results.length > 0 && (
+            <div style={{display:'flex', flexDirection:'column', gap:8, marginTop:12}}>
+              {results.map((result) => (
+                <button
+                  key={result.id}
+                  type="button"
+                  className="card"
+                  onClick={() => chooseManualPlace(result)}
+                  style={{textAlign:'left', padding:'12px 14px', cursor:'pointer'}}
+                >
+                  <span style={{fontFamily:'var(--serif)', fontSize:15, color:'var(--ink)'}}>{result.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            className="btn"
+            type="button"
+            onClick={finishManual}
+            disabled={!currentPlace}
+            style={{marginTop:12, padding:'12px 14px', fontSize:11}}
+          >
+            Use Selected Place
+          </button>
+        </div>
+
         <div style={{flex:1, minHeight:24}}/>
 
         <button className="btn" onClick={allowLocation} disabled={busy}>{busy ? 'Locating...' : 'Allow & Continue'}</button>
-        <div style={{height:10}}/>
-        <button className="btn btn-ghost" onClick={() => finish(DEMO_USER.currentPlace.place, 'manual')}>Use Tyler dev location: Manly, Sydney</button>
+        {IS_DEV && (
+          <>
+            <div style={{height:10}}/>
+            <button className="btn btn-ghost" onClick={() => finish(DEMO_USER.currentPlace.place, 'manual')}>
+              Dev only: use Tyler location
+            </button>
+          </>
+        )}
         <div style={{height:40}}/>
       </div>
     </div>

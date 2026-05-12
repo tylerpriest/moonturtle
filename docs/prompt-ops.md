@@ -55,7 +55,7 @@ Generated reading must match:
 ```js
 {
   primary: { headline, body },
-  activations: [{ title, reading }], // exactly 5
+  activations: [{ title, reading }], // 1 to 3
   lunarAxis: { natalSign, currentSign, reading },
   notice: [], // exactly 4
   avoid: [] // exactly 4

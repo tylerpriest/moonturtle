@@ -16,7 +16,7 @@ Given a natal chart and current sky, produce:
 }
 ```
 
-`topSignals` should contain 1-3 signals. The UI may still show exactly 5 activation cards, but those cards should usually be facets of the top 1-3 signals, not five unrelated transits.
+`topSignals` should contain 1-3 signals. The Today UI should show only the useful one to three activation cards, not a padded list.
 
 ## Signal shape
 
@@ -165,7 +165,7 @@ After scoring:
 3. Deduplicate signals that describe the same transit-target pair.
 4. Group related signals into a single top signal if they form one story.
 5. Pick 1-3 top signals.
-6. Build 5 activation cards from those top signals and their strongest facets.
+6. Build one to three activation cards from those top signals and their strongest facets.
 
 ## Reading handoff
 

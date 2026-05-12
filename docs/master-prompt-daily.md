@@ -38,7 +38,7 @@ Better still: compute the ranking deterministically *before* the prompt runs (Si
 The current draft asks for free-form prose. The MoonTurtle UI needs structured fields:
 ```
 primary.headline + primary.body
-activations[5]
+activations[1-3]
 lunarAxis { natalSign, currentSign, reading }
 notice[4]
 avoid[4]

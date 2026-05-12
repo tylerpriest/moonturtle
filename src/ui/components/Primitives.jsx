@@ -189,13 +189,19 @@ export function TabBar({ active, onTab }) {
       )},
   ];
   return (
-    <div className="tab-bar">
+    <nav className="tab-bar" aria-label="Primary">
       {tabs.map(t => (
-        <div key={t.id} className={`tab${active===t.id?' active':''}`} onClick={()=>onTab(t.id)}>
+        <button
+          key={t.id}
+          type="button"
+          className={`tab${active===t.id?' active':''}`}
+          onClick={() => onTab(t.id)}
+          aria-current={active === t.id ? 'page' : undefined}
+        >
           {t.icon}
           <span>{t.label}</span>
-        </div>
+        </button>
       ))}
-    </div>
+    </nav>
   );
 }

@@ -116,11 +116,11 @@ function loadingState(step, startedAt, settings) {
     },
     interpretation: {
       index: 5,
-      statusLabel: engine.isAi ? `Waiting for ${modelLabel}` : 'Fallback shown',
-      title: engine.isAi ? `${modelLabel} is thinking` : 'Preparing local fallback',
+      statusLabel: engine.isAi ? `Waiting for ${modelLabel}` : 'Local engine',
+      title: engine.isAi ? `${modelLabel} is thinking` : 'Preparing local engine',
       detail: engine.isAi
         ? `${modelLabel} is writing from your chart receipts.`
-        : 'AI is off, so MoonTurtle is using the rough local interpretation.',
+        : 'AI is off, so MoonTurtle is writing from the local synthesis engine.',
     },
     validating: {
       index: 6,
@@ -213,8 +213,8 @@ export function useReading(user, settings) {
           if (!alive) return;
           const interpretationStatus = cached.isFallback
             ? {
-                statusLabel: 'Fallback shown',
-                detail: cached.fallbackReason ?? 'Local deterministic fallback is being shown.',
+                statusLabel: 'Local engine shown',
+                detail: cached.fallbackReason ?? 'MoonTurtle is showing the local synthesis engine.',
                 engine: cached.engine,
                 engineLabel: cached.engineLabel,
               }
@@ -265,8 +265,8 @@ export function useReading(user, settings) {
           loading: null,
           interpretationStatus: reading.isFallback
             ? {
-                statusLabel: 'Fallback shown',
-                detail: reading.fallbackReason ?? 'AI interpretation did not complete. Local fallback is displayed.',
+                statusLabel: 'Local engine shown',
+                detail: reading.fallbackReason ?? 'AI interpretation did not complete. MoonTurtle is showing the local synthesis engine.',
                 engine: reading.engine,
                 engineLabel: reading.engineLabel,
               }
@@ -285,7 +285,7 @@ export function useReading(user, settings) {
           error,
           loading: null,
           interpretationStatus: {
-            statusLabel: 'Fallback shown',
+            statusLabel: 'Reading stopped',
             detail: error?.message ?? 'The reading pipeline stopped before a fallback could be built.',
             engine: engineForSettings(settings),
             engineLabel: formatEngineLabel(engineForSettings(settings)),

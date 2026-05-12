@@ -13,7 +13,7 @@ Return a single JSON object matching this shape. The Worker validates it before 
       "title": "string — the sky→natal interaction in plain language, e.g. 'Sun and Mercury in Aries activating your natal Mercury and Midheaven'",
       "reading": "string — 1 to 2 sentences as question or reflective insight, not prescription"
     }
-    // exactly 5
+    // 1 to 3
   ],
   "lunarAxis": {
     "natalSign": "string — sidereal sign of user's natal Moon (or natal Sun if the day calls for it)",
@@ -35,7 +35,7 @@ Return a single JSON object matching this shape. The Worker validates it before 
 
 - All strings are plain text. No markdown, no HTML, no emoji.
 - Smart quotes (curly) are acceptable; the UI renders them.
-- The five activations are an ordered list; the loudest signal goes first.
+- Activations are an ordered list of the loudest one to three signals; the loudest signal goes first.
 - The `lunarAxis.reading` is the only place where the Moon-vs-Sun synthesis appears. Do not repeat it inside `primary.body` or `activations`.
 - The `notice` and `avoid` lists are each exactly 4 items, no fewer, no more. The Worker rejects the response otherwise.
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TabBar } from '../ui/components/Primitives.jsx';
 import { BirthSetup, Permission } from '../ui/screens/Onboarding.jsx';
 import { TodayScreen } from '../ui/screens/TodayScreen.jsx';
@@ -10,24 +10,29 @@ import { JournalScreen } from '../ui/screens/JournalScreen.jsx';
 import { clearAllMoonTurtleData, getSettings, getUser, saveSettings, saveUser } from '../io/storage.js';
 import { useReading } from '../reading/useReading.js';
 import { useProfileReading } from '../reading/useProfileReading.js';
-import { formatEngineLabel, engineForSettings } from '../reading/generate.js';
 
-function AppTopBar({ settings, readingState, onSettings }) {
-  const engine = readingState?.loading?.engine ?? readingState?.reading?.engine ?? engineForSettings(settings);
-  const status = readingState?.loading?.statusLabel
-    ?? readingState?.interpretationStatus?.statusLabel
-    ?? (readingState?.reading?.isFallback ? 'Fallback shown' : 'Settings');
+function topBarStatus(readingState) {
+  if (readingState?.loading) return ['Writing', readingState.loading.statusLabel ?? 'Preparing today'];
+  if (readingState?.status === 'error') return ['Needs attention', 'Open settings'];
+  if (readingState?.reading?.isFallback) return ['Fallback', 'Reading available'];
+  if (readingState?.reading) return [readingState.fromCache ? 'Saved' : 'Ready', 'Today reading'];
+  return ['Settings', 'Method and controls'];
+}
+
+function AppTopBar({ readingState, onSettings, triggerRef }) {
+  const [status, detail] = topBarStatus(readingState);
   return (
     <div className="app-global-bar">
       <button
         type="button"
+        ref={triggerRef}
         className="settings-trigger"
         onClick={onSettings}
         aria-label="Open settings"
       >
         <span className="settings-trigger-copy">
           <span className="settings-trigger-title">{status}</span>
-          <span className="settings-trigger-engine">{formatEngineLabel(engine)}</span>
+          <span className="settings-trigger-engine">{detail}</span>
         </span>
         <span className="settings-trigger-action">Settings</span>
       </button>
@@ -36,15 +41,26 @@ function AppTopBar({ settings, readingState, onSettings }) {
 }
 
 function SettingsSheet({ settings, readingState, onSettingsChange, onResetLocalData, onClose }) {
+  const closeRef = useRef(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="settings-sheet-backdrop" role="dialog" aria-modal="true" aria-label="Settings">
       <div className="settings-sheet">
         <div className="settings-sheet-header">
           <div>
             <div className="eyebrow">Settings</div>
-            <div className="status-title">Engine, keys, and method.</div>
+            <div className="status-title">Method and reading controls.</div>
           </div>
-          <button type="button" className="settings-close" onClick={onClose}>Close</button>
+          <button type="button" ref={closeRef} className="settings-close" onClick={onClose}>Close</button>
         </div>
         <div className="settings-sheet-scroll">
           <MethodScreen
@@ -66,6 +82,7 @@ export default function App() {
   const [onboardStep, setOnboardStep] = useState(user ? 2 : 0); // 0=birth, 1=permission, 2=done
   const [tab, setTab] = useState('today');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsTriggerRef = useRef(null);
   const readingState = useReading(user, settings);
   const profileState = useProfileReading(user, settings, tab === 'profile' || tab === 'ask');
 
@@ -96,12 +113,21 @@ export default function App() {
     setSettingsOpen(false);
   }
 
+  function handleOpenSettings() {
+    setSettingsOpen(true);
+  }
+
+  function handleCloseSettings() {
+    setSettingsOpen(false);
+    window.setTimeout(() => settingsTriggerRef.current?.focus(), 0);
+  }
+
   if (onboardStep === 0) return <BirthSetup onNext={handleBirthComplete}/>;
   if (onboardStep === 1) return <Permission draftUser={draftUser} onDone={handleOnboardingComplete}/>;
 
   return (
     <div className="app-shell">
-      <AppTopBar settings={settings} readingState={readingState} onSettings={() => setSettingsOpen(true)}/>
+      <AppTopBar readingState={readingState} onSettings={handleOpenSettings} triggerRef={settingsTriggerRef}/>
       <div className="screen-scroll">
         {tab === 'today'   && <TodayScreen  state={readingState} user={user} onTab={setTab}/>}
         {tab === 'sky'     && <SkyScreen    state={readingState} onTab={setTab}/>}
@@ -116,7 +142,7 @@ export default function App() {
           readingState={readingState}
           onSettingsChange={handleSettingsChange}
           onResetLocalData={handleResetLocalData}
-          onClose={() => setSettingsOpen(false)}
+          onClose={handleCloseSettings}
         />
       )}
     </div>

@@ -58,7 +58,7 @@ For one known timestamp/location:
 - exact/tight aspects outrank loose prestige aspects
 - unknown birth time removes angle/house scoring
 - station/eclipse/ingress events can rise appropriately
-- five activation cards derive from top signals instead of random chart enumeration
+- activation cards derive from top signals instead of random chart enumeration
 
 ## Reading schema
 
@@ -66,7 +66,7 @@ Generated prose object:
 
 - has `primary.headline`
 - has `primary.body`
-- has exactly 5 activations
+- has 1 to 3 activations
 - each activation has `title` and `reading`
 - has `lunarAxis.natalSign`, `lunarAxis.currentSign`, `lunarAxis.reading`
 - has exactly 4 notice items

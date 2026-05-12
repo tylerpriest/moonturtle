@@ -45,7 +45,7 @@ function LoadingCard({ title = 'Calculating the sky.', loading, isError = false 
   const thinkingDetail = THINKING_DETAILS[elapsed % THINKING_DETAILS.length];
 
   return (
-    <div className="card warm" style={{padding:'26px 24px', overflow:'hidden'}}>
+    <div className="card warm" style={{padding:'26px 24px', overflow:'hidden'}} aria-live="polite">
       <div style={{position:'absolute', top:-10, right:-8, opacity:0.12}}><Sprig size={72} flip/></div>
       <div className="section-label">MoonTurtle</div>
       <h1 className="h-display" style={{fontSize:26, marginBottom:12}}>
@@ -177,8 +177,9 @@ function ListCard({ title, color, items, marker = 'dot' }) {
 }
 
 function sourceLabel(reading) {
-  if (reading?.isFallback) return 'Rough local interpretation';
+  if (reading?.isFallback) return reading?.sourceDetail?.label ?? 'MoonTurtle local synthesis';
   if (reading?.sourceDetail?.label) return reading.sourceDetail.label;
+  if (reading?.source === 'local-moonturtle-engine') return 'MoonTurtle local synthesis';
   if (reading?.source === 'local-symbolic-engine') return 'Local symbolic engine';
   if (reading?.providerAttempted) return 'AI synthesis';
   return 'Reading engine';
@@ -187,7 +188,7 @@ function sourceLabel(reading) {
 function engineDisplay(readingOrStatus) {
   return readingOrStatus?.engineLabel
     ?? readingOrStatus?.engine?.displayName
-    ?? 'Local deterministic fallback';
+    ?? 'Local MoonTurtle engine';
 }
 
 function attemptMessage(reading) {
@@ -249,12 +250,12 @@ function InterpretationStatus({ state }) {
   const status = loading ?? state?.interpretationStatus;
   const elapsed = useElapsedSeconds(loading?.startedAt, Boolean(loading));
   const reading = state?.reading;
-  const label = status?.statusLabel ?? (reading?.isFallback ? 'Fallback shown' : 'Saved');
+  const label = status?.statusLabel ?? (reading?.isFallback ? 'Local engine shown' : 'Saved');
   const detail = status?.detail ?? attemptMessage(reading) ?? 'Reading status will appear here.';
   const engine = status?.engineLabel ?? engineDisplay(reading);
 
   return (
-    <div className={`status-surface ${!loading && reading?.isFallback ? 'is-fallback' : ''}`} style={{marginBottom:14}}>
+    <div className={`status-surface ${!loading && reading?.isFallback ? 'is-fallback' : ''}`} style={{marginBottom:14}} aria-live="polite">
       <div style={{display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-start'}}>
         <div>
           <div className="eyebrow">Interpretation status</div>
@@ -273,20 +274,28 @@ function InterpretationStatus({ state }) {
 function FallbackNotice({ reading, onRetry }) {
   if (!reading?.isFallback) return null;
   const skipped = reading.aiAttempt?.status === 'skipped';
+  const hasDetails = reading.fallbackReason || (reading.aiAttempt && reading.aiAttempt.status !== 'completed' && reading.aiAttempt.status !== 'skipped');
   return (
     <div className="fallback-banner">
-      <div className="eyebrow" style={{color:'var(--terracotta)'}}>Fallback shown</div>
+      <div className="eyebrow" style={{color:'var(--terracotta)'}}>Local engine shown</div>
       <p className="body-prose" style={{fontSize:15, marginTop:5}}>
         {skipped
-          ? 'AI interpretation is off. Showing rough local interpretation from calculated receipts.'
-          : 'AI interpretation did not complete. Showing local fallback from calculated receipts.'}
+          ? 'AI interpretation is off. Showing MoonTurtle local synthesis from calculated receipts.'
+          : 'AI interpretation did not complete. Showing MoonTurtle local synthesis from calculated receipts.'}
       </p>
-      {reading.fallbackReason && (
-        <p className="meta" style={{marginTop:7, lineHeight:1.4}}>
-          {reading.fallbackReason}
-        </p>
+      {hasDetails && (
+        <details style={{marginTop:8}}>
+          <summary className="meta" style={{cursor:'pointer', color:'var(--terracotta)'}}>
+            What happened?
+          </summary>
+          {reading.fallbackReason && (
+            <p className="meta" style={{marginTop:7, lineHeight:1.4}}>
+              {reading.fallbackReason}
+            </p>
+          )}
+          <FailureDetails reading={reading}/>
+        </details>
       )}
-      <FailureDetails reading={reading}/>
       {onRetry && reading.providerAttempted && (
         <button
           type="button"
@@ -341,6 +350,56 @@ function LoudestSignals({ reading }) {
   );
 }
 
+function DailyPractice({ reading }) {
+  const notice = reading?.notice ?? [];
+  const avoid = reading?.avoid ?? [];
+  if (!notice.length && !avoid.length && !reading?.release && !reading?.act) return null;
+  return (
+    <div className="card warm" style={{padding:'22px'}}>
+      <div className="section-label">Make Today Good</div>
+      <div style={{display:'flex', flexDirection:'column', gap:16}}>
+        {notice.length > 0 && (
+          <div>
+            <div className="eyebrow" style={{color:'var(--moss)'}}>Feel / notice</div>
+            <ul style={{listStyle:'none', display:'flex', flexDirection:'column', gap:8, marginTop:8}}>
+              {notice.map((item, index) => (
+                <li key={`${item}-${index}`} style={{display:'flex', gap:9, alignItems:'flex-start'}}>
+                  <span style={{flexShrink:0, marginTop:8, width:5, height:5, borderRadius:'50%', background:'var(--moss)', display:'block'}}/>
+                  <span className="body-prose" style={{fontSize:15}}>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {(reading?.release || avoid.length > 0) && (
+          <div style={{paddingTop:14, borderTop:'1px solid var(--hairline)'}}>
+            <div className="eyebrow" style={{color:'var(--plum)'}}>Release / avoid overdoing</div>
+            {reading?.release && (
+              <p className="body-prose" style={{fontSize:15, marginTop:7}}>{reading.release}</p>
+            )}
+            {avoid.length > 0 && (
+              <ul style={{listStyle:'none', display:'flex', flexDirection:'column', gap:8, marginTop:8}}>
+                {avoid.map((item, index) => (
+                  <li key={`${item}-${index}`} style={{display:'flex', gap:9, alignItems:'flex-start'}}>
+                    <span style={{flexShrink:0, marginTop:9, width:8, height:1, background:'var(--plum)', display:'block'}}/>
+                    <span className="body-prose" style={{fontSize:15}}>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {reading?.act && (
+          <div style={{paddingTop:14, borderTop:'1px solid var(--hairline)'}}>
+            <div className="eyebrow" style={{color:'var(--terracotta)'}}>Express / act</div>
+            <p className="body-prose" style={{fontSize:15, marginTop:7}}>{reading.act}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ReadingSource({ reading, fromCache }) {
   const detail = reading?.sourceDetail;
   const systems = detail?.systems ?? [];
@@ -348,24 +407,29 @@ function ReadingSource({ reading, fromCache }) {
   return (
     <div style={{marginTop:14, paddingTop:12, borderTop:'1px solid var(--hairline)'}}>
       <div className="meta">
-        {fromCache ? 'Saved for today' : 'Written for today'} · {sourceLabel(reading)}
+        Calculated locally: sky, chart, and ranked signals.
       </div>
       <div className="meta" style={{marginTop:5, lineHeight:1.45, letterSpacing:'0.03em'}}>
-        Engine: {reading?.engineLabel ?? engineDisplay(reading)}
+        Written interpretively: {fromCache ? 'saved for today' : sourceLabel(reading)}.
       </div>
-      {attemptMessage(reading) && (
-        <div className="meta" style={{marginTop:5, lineHeight:1.45, letterSpacing:'0.03em'}}>
-          {attemptMessage(reading)}
-        </div>
-      )}
-      {detail && (
+      {(detail || attemptMessage(reading) || reading?.engineLabel) && (
         <details style={{marginTop:8}}>
           <summary className="meta" style={{cursor:'pointer', color:'var(--terracotta)'}}>
             Why this reading?
           </summary>
-          <p className="meta" style={{marginTop:8, lineHeight:1.45, letterSpacing:'0.03em'}}>
-            {detail.caveat}
-          </p>
+          <div className="meta" style={{marginTop:8, lineHeight:1.45, letterSpacing:'0.03em'}}>
+            Engine: {reading?.engineLabel ?? engineDisplay(reading)}
+          </div>
+          {attemptMessage(reading) && (
+            <div className="meta" style={{marginTop:5, lineHeight:1.45, letterSpacing:'0.03em'}}>
+              {attemptMessage(reading)}
+            </div>
+          )}
+          {detail?.caveat && (
+            <p className="meta" style={{marginTop:8, lineHeight:1.45, letterSpacing:'0.03em'}}>
+              {detail.caveat}
+            </p>
+          )}
           {systems.length > 0 && (
             <div style={{display:'flex', flexWrap:'wrap', gap:6, marginTop:9}}>
               {systems.map((system) => (
@@ -399,6 +463,7 @@ export function TodayScreen({ state, user, onTab }) {
   const sharePayload = isReady
     ? buildReadingSharePayload({ reading: state.reading, sky: state.sky })
     : null;
+  const showTopStatus = Boolean(state?.loading || state?.status === 'error');
 
   return (
     <div style={{padding:'24px 26px 36px', position:'relative'}}>
@@ -414,7 +479,7 @@ export function TodayScreen({ state, user, onTab }) {
 
       <div style={{height:22}}/>
 
-      {(state?.loading || state?.reading || state?.interpretationStatus) && (
+      {showTopStatus && (
         <InterpretationStatus state={state}/>
       )}
 
@@ -431,7 +496,7 @@ export function TodayScreen({ state, user, onTab }) {
           <div className="card warm" style={{padding:'26px 24px 24px', position:'relative', overflow:'hidden'}}>
             <div style={{position:'absolute', top:-8, right:-8}}><Sprig size={70} flip opacity={0.18}/></div>
 
-            <div className="section-label">Today's Reading</div>
+            <div className="section-label">Daily Basic</div>
             <FallbackNotice reading={state.reading} onRetry={state.refresh}/>
 
             <div style={{display:'flex', alignItems:'center', gap:14, margin:'4px 0 18px'}}>
@@ -446,7 +511,7 @@ export function TodayScreen({ state, user, onTab }) {
               {state.reading.headline}
             </h1>
             <p className="body-prose">
-              {state.reading.summaryLine ?? state.reading.body}
+              {state.reading.body}
             </p>
             <ReadingSource reading={state.reading} fromCache={state.fromCache}/>
             <div className="reading-actions">
@@ -465,40 +530,16 @@ export function TodayScreen({ state, user, onTab }) {
 
           <OrnamentDiv/>
 
-          <DailyGlance reading={state.reading}/>
-
-          <OrnamentDiv/>
-
-          <div className="section-label">Full Reading</div>
-          <div className="card warm" style={{padding:'22px'}}>
-            <p className="body-prose">
-              {state.reading.fullReading ?? state.reading.body}
-            </p>
-            {(state.reading.release || state.reading.act) && (
-              <div style={{marginTop:16, paddingTop:14, borderTop:'1px solid var(--hairline)', display:'flex', flexDirection:'column', gap:10}}>
-                {state.reading.release && (
-                  <div>
-                    <div className="eyebrow">Release</div>
-                    <p className="body-prose" style={{fontSize:15, marginTop:3}}>{state.reading.release}</p>
-                  </div>
-                )}
-                {state.reading.act && (
-                  <div>
-                    <div className="eyebrow">Act</div>
-                    <p className="body-prose" style={{fontSize:15, marginTop:3}}>{state.reading.act}</p>
-                  </div>
-                )}
-              </div>
-            )}
+          <div className="section-label">The Loudest Signals</div>
+          <div style={{display:'flex', flexDirection:'column', gap:14}}>
+            {state.reading.activations.slice(0, 3).map((activation, index) => (
+              <ActivationCard key={`${activation.title}-${index}`} activation={activation} index={index + 1}/>
+            ))}
           </div>
 
           <OrnamentDiv/>
 
-          <LoudestSignals reading={state.reading}/>
-
-          <OrnamentDiv/>
-
-          <div className="section-label">What the Moon Is Asking</div>
+          <div className="section-label">Moon Axis</div>
           <div className="card" style={{padding:'22px'}}>
             <div style={{display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:14, alignItems:'center'}}>
               <AxisCol
@@ -530,26 +571,15 @@ export function TodayScreen({ state, user, onTab }) {
 
           <OrnamentDiv/>
 
-          <div className="section-label">What Today Activates</div>
-          <div style={{display:'flex', flexDirection:'column', gap:14}}>
-            {state.reading.activations.map((activation, index) => (
-              <ActivationCard key={activation.title} activation={activation} index={index + 1}/>
-            ))}
-          </div>
-
-          <OrnamentDiv/>
-
-          <div style={{display:'grid', gridTemplateColumns:'1fr', gap:14}}>
-            <ListCard title="What to Notice" color="var(--moss)" items={state.reading.notice}/>
-            <ListCard title="What to Avoid Overdoing" color="var(--plum)" items={state.reading.avoid} marker="line"/>
-          </div>
+          <DailyPractice reading={state.reading}/>
 
           <OrnamentDiv/>
         </>
       )}
 
-      <div
-        style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 0', borderTop:'1px solid var(--hairline)', borderBottom:'1px solid var(--hairline)', cursor:'pointer'}}
+      <button
+        type="button"
+        className="receipt-cta"
         onClick={() => onTab('sky')}
       >
         <div>
@@ -559,7 +589,7 @@ export function TodayScreen({ state, user, onTab }) {
           </div>
         </div>
         <div style={{fontFamily:'var(--serif)', fontSize:24, color:'var(--ink-mute)'}}>→</div>
-      </div>
+      </button>
 
       <div style={{height:14}}/>
       <p className="meta" style={{textAlign:'center', fontFamily:'var(--serif)', fontStyle:'italic', fontSize:13, color:'var(--ink-mute)', maxWidth:280, margin:'0 auto'}}>

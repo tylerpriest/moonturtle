@@ -1,13 +1,4 @@
-import {
-  aspectEntry,
-  bodyEntry,
-  houseEntry,
-  keywordsForSign,
-  moonPhaseEntry,
-  readingSourceMetadata,
-  SOURCE_METADATA_VERSION,
-  signEntry,
-} from './lexicon/index.js';
+import { SOURCE_METADATA_VERSION } from './lexicon/index.js';
 import {
   PROMPT_VERSION,
   normalizeReadingShape,
@@ -15,6 +6,14 @@ import {
   stableHash,
   validateReadingProse,
 } from './validation.js';
+import {
+  generateLocalReading,
+  localEngineMeta,
+  localEngineSourceMetadata,
+  LOCAL_ENGINE_ID,
+  LOCAL_ENGINE_LABEL,
+} from './localEngine.js';
+import { recordAiCalibration, recordReadingValidationEvent } from './localLearning.js';
 
 export const DAILY_PROMPT_VERSION = PROMPT_VERSION;
 export const PROFILE_PROMPT_VERSION = 'profile-v1-2026-05-12';
@@ -26,475 +25,8 @@ function ordinal(n) {
   return `${n}th`;
 }
 
-function wordsFor(sign) {
-  return keywordsForSign(sign);
-}
-
 function findBody(chart, name) {
   return chart?.bodies?.find((body) => body.body === name);
-}
-
-function primarySignals(signals) {
-  const loud = signals?.topSignals?.length ? signals.topSignals : signals?.activationSignals;
-  return (loud ?? []).slice(0, 3);
-}
-
-function selectedSignals(signals, count = 5) {
-  const pool = [
-    ...(signals?.topSignals ?? []),
-    ...(signals?.activationSignals ?? []),
-    ...(signals?.supportingSignals ?? []),
-  ];
-  const selected = [];
-  const seen = new Set();
-  for (const signal of pool) {
-    if (!signal?.id || seen.has(signal.id)) continue;
-    seen.add(signal.id);
-    selected.push(signal);
-    if (selected.length === count) break;
-  }
-  return selected;
-}
-
-const BODY_FORCES = {
-  Moon: 'body memory, mood, need, and instinct',
-  Sun: 'vitality, identity, visibility, and the larger chapter',
-  Mercury: 'language, naming, questions, and nervous-system tempo',
-  Venus: 'value, affection, pleasure, and receptivity',
-  Mars: 'heat, desire, courage, and the need for clean movement',
-  Jupiter: 'scale, faith, teaching, and permission to widen',
-  Saturn: 'structure, pressure, maturity, and consequence',
-  Uranus: 'disruption, freedom, surprise, and pattern-break',
-  Neptune: 'longing, imagination, sensitivity, and softened edges',
-  Pluto: 'depth, pressure, truth, and what refuses to stay hidden',
-  'North Node': 'growth appetite, stretch, and the unfamiliar future',
-  'South Node': 'old reflex, residue, and what has become too familiar',
-};
-
-const TARGET_FIELDS = {
-  Moon: 'your body-memory and emotional baseline',
-  Sun: 'your vitality and sense of self',
-  Mercury: 'the part of you that names, explains, and translates',
-  Venus: 'your value system, affection, and receiving pattern',
-  Mars: 'your wanting, anger, courage, and capacity to act',
-  Jupiter: 'your faith, scale, teachers, and permission to grow',
-  Saturn: 'your inner structure, limits, and relationship with time',
-  Uranus: 'your pattern-breaker and need for freedom',
-  Neptune: 'your sensitivity, longing, dream life, and porous places',
-  Pluto: 'your depth instinct and contact with buried truth',
-  'North Node': 'your future-facing growth edge',
-  'South Node': 'your familiar reflex and inherited ease',
-  Ascendant: 'the way you meet life through the body and first impression',
-  Descendant: 'the mirror of partnership, agreement, and encounter',
-  Midheaven: 'your visible path, vocation, and public direction',
-  IC: 'your roots, private ground, family pattern, and inner base',
-};
-
-const ASPECT_LANGUAGE = {
-  conjunct: {
-    verb: 'meets',
-    feel: 'fusion, emphasis, and immediacy',
-    work: 'the symbols are in the same room, so proportion matters more than volume',
-    risk: 'fusion turning into certainty',
-    question: 'What becomes clearer when these parts stop pretending they are separate?',
-  },
-  opposing: {
-    verb: 'faces',
-    feel: 'polarity, mirroring, and relational tension',
-    work: 'the work is to keep both sides visible without collapsing into either one',
-    risk: 'making one side wrong so the other can feel clean',
-    question: 'Where could both sides of the mirror be allowed to stay visible?',
-  },
-  squaring: {
-    verb: 'presses against',
-    feel: 'friction, effort, and creative pressure',
-    work: 'pressure can become movement if it does not have to become urgency',
-    risk: 'mistaking pressure for an emergency',
-    question: 'What kind of movement is possible without forcing a whole answer?',
-  },
-  trining: {
-    verb: 'flows toward',
-    feel: 'support, fluency, and quieter permission',
-    work: 'ease is available, but it still becomes real through attention',
-    risk: 'letting ease become passivity',
-    question: 'What support is already present but easy to overlook?',
-  },
-  sextiling: {
-    verb: 'opens a small door toward',
-    feel: 'opportunity, cooperation, and a modest opening',
-    work: 'the opening is useful if it receives one small act of participation',
-    risk: 'waiting for a small opening to announce itself loudly',
-    question: 'What small opening is asking for a little participation?',
-  },
-};
-
-const BODY_QUESTIONS = {
-  Moon: 'What feeling can be felt without becoming the whole weather?',
-  Sun: 'What wants to be seen without being forced into performance?',
-  Mercury: 'What sentence would make this legible without making it final?',
-  Venus: 'What value is asking to be felt before it is negotiated?',
-  Mars: 'Where can heat become one clean movement instead of an emergency?',
-  Jupiter: 'What can widen without becoming inflated?',
-  Saturn: 'What structure would steady this without hardening it?',
-  Uranus: 'What pattern can change without burning down the whole room?',
-  Neptune: 'What softness is real, and what is only fog?',
-  Pluto: 'What truth can be named without turning intensity into control?',
-  'North Node': 'What unfamiliar direction can be touched lightly?',
-  'South Node': 'What old reflex can loosen without being rejected?',
-};
-
-const TARGET_QUESTIONS = {
-  Moon: 'What feeling can move without becoming the whole weather?',
-  Sun: 'What part of identity wants daylight without performance?',
-  Mercury: 'What sentence would make this legible without making it final?',
-  Venus: 'Where do desire and receptivity need cleaner terms?',
-  Mars: 'What wants action, and what only wants heat?',
-  Jupiter: 'What can grow without becoming too large to hold?',
-  Saturn: 'What limit would make this feel more trustworthy?',
-  Ascendant: 'What is the body saying before the story arrives?',
-  Descendant: 'What mirror is useful without becoming a verdict?',
-  Midheaven: 'What sentence belongs in public, and what can stay private?',
-  IC: 'What private truth wants language before it meets the world?',
-};
-
-function cleanBasis(entry, fallback = 'the symbol asks for careful attention') {
-  return (entry?.interpretiveBasis ?? fallback).replace(/^[^:]+:\s*/, '');
-}
-
-function phraseList(items = [], limit = 3) {
-  const clean = items.filter(Boolean).slice(0, limit);
-  if (clean.length <= 1) return clean[0] ?? '';
-  if (clean.length === 2) return `${clean[0]} and ${clean[1]}`;
-  return `${clean.slice(0, -1).join(', ')}, and ${clean[clean.length - 1]}`;
-}
-
-function pair(items = []) {
-  const clean = items.filter(Boolean).slice(0, 2);
-  if (clean.length <= 1) return clean[0] ?? 'attention';
-  return `${clean[0]} and ${clean[1]}`;
-}
-
-function bodyForce(body) {
-  return BODY_FORCES[body] ?? phraseList(bodyEntry(body).keywords, 4);
-}
-
-function bodyNoun(body) {
-  return {
-    Moon: 'the feeling-body',
-    Sun: 'the visible self',
-    Mercury: 'the sentence',
-    Venus: 'the value question',
-    Mars: 'the heat',
-    Jupiter: 'the widening',
-    Saturn: 'the structure',
-    Uranus: 'the interruption',
-    Neptune: 'the soft place',
-    Pluto: 'the pressure point',
-    'North Node': 'the growth edge',
-    'South Node': 'the familiar reflex',
-  }[body] ?? `${body} thread`;
-}
-
-function targetNoun(target) {
-  return {
-    Moon: 'emotional baseline',
-    Sun: 'sense of self',
-    Mercury: 'inner language',
-    Venus: 'love and value pattern',
-    Mars: 'wanting and courage',
-    Jupiter: 'faith and permission',
-    Saturn: 'inner structure',
-    Uranus: 'need for freedom',
-    Neptune: 'sensitivity',
-    Pluto: 'depth instinct',
-    'North Node': 'growth edge',
-    'South Node': 'old reflex',
-    Ascendant: 'body and first response',
-    Descendant: 'relationship mirror',
-    Midheaven: 'public path',
-    IC: 'private ground',
-  }[target] ?? targetField(target);
-}
-
-function aspectMood(aspect) {
-  return {
-    conjunct: 'in the foreground',
-    opposing: 'across a mirror',
-    squaring: 'under creative pressure',
-    trining: 'with a steadier current',
-    sextiling: 'through a small opening',
-  }[aspect] ?? 'in contact';
-}
-
-function targetField(target) {
-  return TARGET_FIELDS[target] ?? `${target?.toLowerCase?.() ?? 'this'} pattern`;
-}
-
-function aspectLanguage(aspect) {
-  return ASPECT_LANGUAGE[aspect] ?? {
-    verb: aspect ?? 'touches',
-    feel: aspect ?? 'contact',
-    work: 'the symbol is worth noticing without turning it into a command',
-    risk: 'over-reading the signal',
-    question: 'What is being shown without needing to become a rule?',
-  };
-}
-
-function orbPhrase(orb) {
-  if (orb <= 0.5) return 'very tight';
-  if (orb <= 1) return 'close';
-  if (orb <= 2) return 'noticeable';
-  return 'wide but present';
-}
-
-function houseTopic(house) {
-  if (!house) return null;
-  const entry = houseEntry(house);
-  return `the ${ordinal(house)} house field of ${pair(entry.keywords)}`;
-}
-
-function signTone(sign) {
-  return phraseList(signEntry(sign).keywords, 3);
-}
-
-function signTexture(sign) {
-  const entry = signEntry(sign);
-  return `${sign}'s ${pair(entry.keywords)}`;
-}
-
-function signalContext(signal) {
-  const transit = bodyEntry(signal.transitingBody);
-  const skySign = signEntry(signal.transitingSign);
-  const natalSign = signEntry(signal.natalSign);
-  const aspect = aspectEntry(signal.aspect);
-  const aspectText = aspectLanguage(signal.aspect);
-  const house = signal.natalHouse ? houseEntry(signal.natalHouse) : null;
-  return { transit, skySign, natalSign, aspect, aspectText, house };
-}
-
-function conciseSignal(signal) {
-  return `${signal.transitingBody} ${signal.aspect} natal ${signal.natalTarget}`;
-}
-
-function targetPhrase(signal) {
-  const house = houseTopic(signal.natalHouse);
-  const sign = signal.natalSign ? ` in ${signal.natalSign}` : '';
-  return `${targetField(signal.natalTarget)}${sign}${house ? `, inside ${house}` : ''}`;
-}
-
-function interpretSignal(signal, { includeReceipt = false } = {}) {
-  const { skySign, natalSign, aspectText } = signalContext(signal);
-  const receipt = includeReceipt ? ` The receipt is ${signal.title}, ${orbPhrase(signal.orb)} at ${signal.orb} degrees.` : '';
-
-  return `Current ${signal.transitingBody} is in ${signal.transitingSign}, carrying ${bodyForce(signal.transitingBody)} in ${signTexture(signal.transitingSign)}. It ${aspectText.verb} ${targetPhrase(signal)}. This can feel like ${pair(skySign.keywords)} meeting ${pair(natalSign.keywords)}; ${aspectText.work}.${receipt}`;
-}
-
-function questionForSignal(signal) {
-  if (TARGET_QUESTIONS[signal.natalTarget]) return TARGET_QUESTIONS[signal.natalTarget];
-  return BODY_QUESTIONS[signal.transitingBody] ?? aspectLanguage(signal.aspect).question;
-}
-
-function makeHeadline(currentSky, signals) {
-  const [top] = primarySignals(signals);
-  if (!top) {
-    return `${currentSky.lunar.moonSign} Moon, one honest thread at a time.`;
-  }
-  return `${bodyNoun(top.transitingBody)} meets your ${targetNoun(top.natalTarget)}.`;
-}
-
-function makeBody({ natalChart, currentSky, signals }) {
-  const moon = findBody(natalChart, 'Moon');
-  const loud = primarySignals(signals);
-  const phase = moonPhaseEntry(currentSky.lunar.phase);
-  const moonKeywords = phraseList(wordsFor(currentSky.lunar.moonSign), 3);
-  const sunKeywords = phraseList(wordsFor(currentSky.lunar.sunSign), 2);
-  const phaseBasis = cleanBasis(phase, 'the lunar cycle asks for care with what is ending and beginning.');
-  const lunarSentence = `Today is a ${currentSky.lunar.phase.toLowerCase()} Moon in ${currentSky.lunar.moonSign} day: ${moonKeywords}, with ${currentSky.lunar.illumination}% light and a lunar task of ${pair(phase.keywords)}. The Sun in ${currentSky.lunar.sunSign} keeps the larger chapter around ${sunKeywords}.`;
-
-  if (!loud.length) {
-    const natalMoon = signEntry(moon?.sign);
-    return `${lunarSentence} Your natal Moon in ${moon?.sign ?? 'your chart'} gives the reading its anchor: ${pair(natalMoon.keywords)} before performance, body signal before theory. ${phaseBasis}`;
-  }
-
-  const [top] = loud;
-  const topAspect = aspectLanguage(top.aspect);
-  const main = `The loudest receipt is ${conciseSignal(top)}, ${aspectMood(top.aspect)}. In plain language, ${bodyNoun(top.transitingBody)} is touching your ${targetNoun(top.natalTarget)}; ${topAspect.work}.`;
-  const secondary = loud[1]
-    ? `A second thread, ${conciseSignal(loud[1])}, keeps your ${targetNoun(loud[1].natalTarget)} in the room; it matters, but it does not need to become the whole story.`
-    : phaseBasis;
-
-  return `${lunarSentence} ${main} ${secondary} The useful move is not more interpretation; it is one cleaner relationship between what you feel, what you name, and what you actually carry today.`;
-}
-
-function makeLunarAxis(natalChart, currentSky) {
-  const natalMoon = findBody(natalChart, 'Moon');
-  const natalWords = wordsFor(natalMoon?.sign);
-  const currentWords = wordsFor(currentSky.lunar.moonSign);
-  const currentSign = signEntry(currentSky.lunar.moonSign);
-  const natalSign = signEntry(natalMoon?.sign);
-  const sameElement = currentSign.element && currentSign.element === natalSign.element;
-  const house = natalMoon?.house ? ` through the ${ordinal(natalMoon.house)} house` : '';
-  const relation = sameElement
-    ? `${currentSign.element.toLowerCase()} recognizing itself in two different dialects`
-    : `${currentSign.element?.toLowerCase() ?? 'today'} meeting ${natalSign.element?.toLowerCase() ?? 'your natal pattern'}`;
-  return {
-    natal: {
-      sign: natalMoon?.sign ?? 'Unknown',
-      house: natalMoon?.house ? `${ordinal(natalMoon.house)} house` : 'house unknown',
-      words: natalWords,
-    },
-    current: {
-      sign: currentSky.lunar.moonSign,
-      words: currentWords,
-    },
-    reading: `The current Moon speaks in ${currentSky.lunar.moonSign}'s ${phraseList(currentWords)}, while your natal Moon remembers ${natalMoon?.sign ?? 'its own'} ${phraseList(natalWords)}${house}. This is ${relation}: the day may ask feeling to become legible before it becomes public. The axis is not a verdict; it is a translation problem between today's sky and your oldest emotional habits.`,
-  };
-}
-
-function fallbackActivation(currentSky, kind) {
-  const moon = moonPhaseEntry(currentSky.lunar.phase);
-  const sunSign = signEntry(currentSky.lunar.sunSign);
-  if (kind === 'sun') {
-    return {
-      title: `Sun in ${currentSky.lunar.sunSign}`,
-      activates: 'the larger solar chapter',
-      theme: `The Sun in ${currentSky.lunar.sunSign} keeps the background chapter in ${phraseList(sunSign.keywords)}. It is not the loudest contact, but it colors what the day is trying to make visible over time.`,
-      question: 'What is becoming visible slowly rather than urgently?',
-      insight: `Receipts: current Sun in ${currentSky.lunar.sunSign}.`,
-      score: 0,
-    };
-  }
-  return {
-    title: `${currentSky.lunar.phase} Moon in ${currentSky.lunar.moonSign}`,
-    activates: 'the daily body rhythm',
-    theme: `The Moon is ${currentSky.lunar.illumination}% lit in ${currentSky.lunar.moonSign}. ${cleanBasis(moon)} This gives the reading its pulse even when the transit field is quiet.`,
-    question: 'What feeling is asking for proportion rather than proof?',
-    insight: `Receipts: Moon in ${currentSky.lunar.moonSign}, ${currentSky.lunar.phase.toLowerCase()}, day ${currentSky.lunar.age} of the lunation.`,
-    score: 0,
-  };
-}
-
-function makeActivations(signals, currentSky) {
-  const cards = selectedSignals(signals, 5).map((signal) => {
-    const { aspectText } = signalContext(signal);
-    return {
-      title: signal.title,
-      activates: signal.activates,
-      theme: interpretSignal(signal, { includeReceipt: false }),
-      question: questionForSignal(signal),
-      insight: `This is a ${orbPhrase(signal.orb)} ${signal.aspect} contact: ${aspectText.feel}. The shadow to watch is ${aspectText.risk}.`,
-      score: signal.score,
-    };
-  });
-
-  if (cards.length < 5) cards.push(fallbackActivation(currentSky, 'moon'));
-  if (cards.length < 5) cards.push(fallbackActivation(currentSky, 'sun'));
-  return cards.slice(0, 5);
-}
-
-function makeNotice({ natalChart, currentSky, signals }) {
-  const [top, second] = primarySignals(signals);
-  const mercury = findBody(natalChart, 'Mercury');
-  const phase = moonPhaseEntry(currentSky.lunar.phase);
-  const moonSign = signEntry(currentSky.lunar.moonSign);
-  const house = houseTopic(top?.natalHouse);
-  return [
-    `${pair(phase.keywords)} before adding a new demand.`,
-    top ? `${top.transitingBody} on ${top.natalTarget}: ${targetField(top.natalTarget)} may speak first.` : `${currentSky.lunar.moonSign} Moon: ${pair(moonSign.keywords)} may speak first.`,
-    house ? `${house} is the practical doorway.` : mercury ? `Mercury in ${mercury.sign}: language before certainty.` : 'The first honest sentence before polish.',
-    second ? `${conciseSignal(second)} stays secondary, not total.` : `${currentSky.lunar.moonSign} body metaphor: ${pair(moonSign.body)}.`,
-  ].map((item) => item.charAt(0).toUpperCase() + item.slice(1));
-}
-
-function makeAvoid(signals) {
-  const [top] = primarySignals(signals);
-  const aspectText = top ? aspectLanguage(top.aspect) : null;
-  return [
-    'Turning a symbol into a rule.',
-    top ? `${top.transitingBody} pressure becoming a whole-life verdict.` : 'Quiet sky filled with borrowed urgency.',
-    aspectText ? `${aspectText.risk}.` : 'A small signal being inflated into certainty.',
-    'Body metaphor treated as diagnosis.',
-  ].map((item) => item.charAt(0).toUpperCase() + item.slice(1));
-}
-
-function makeReceipts(currentSky, signals) {
-  return [
-    `${currentSky.lunar.phase} Moon in ${currentSky.lunar.moonSign}, ${currentSky.lunar.illumination}% lit`,
-    ...selectedSignals(signals, 3).map((signal) => `${signal.title}, ${signal.orb} degree orb`),
-  ];
-}
-
-function makeLoudestSignals(signals) {
-  return selectedSignals(signals, 3).map((signal) => ({
-    title: signal.title,
-    activates: signal.activates,
-    score: signal.score,
-    orb: signal.orb,
-    reason: signal.reasons?.join(' · ') ?? `${signal.aspect} contact`,
-  }));
-}
-
-function makeSummaryLine(currentSky, signals) {
-  const [top] = primarySignals(signals);
-  if (!top) {
-    return `Today is a ${currentSky.lunar.phase.toLowerCase()} ${currentSky.lunar.moonSign} Moon day: keep the reading small, embodied, and honest.`;
-  }
-  return `Today is led by ${top.transitingBody} in ${top.transitingSign} ${top.aspect} your natal ${top.natalTarget}: ${aspectLanguage(top.aspect).work}.`;
-}
-
-function makeGlanceItems(input) {
-  const { currentSky, signals } = input;
-  const [top, second, third] = selectedSignals(signals, 3);
-  const phase = moonPhaseEntry(currentSky.lunar.phase);
-  const items = [
-    top
-      ? `${top.transitingBody} is the loudest signal; it touches ${top.activates.replace(/^natal\s+/i, '')}.`
-      : `The ${currentSky.lunar.phase} Moon in ${currentSky.lunar.moonSign} sets a quieter daily tone.`,
-    `The Moon is ${currentSky.lunar.illumination}% lit, so ${pair(phase.keywords)} belongs near the center.`,
-  ];
-  if (second) items.push(`${second.transitingBody} adds a secondary thread around ${targetNoun(second.natalTarget)}.`);
-  if (third) items.push(`${third.transitingBody} is present, but it should not crowd the main signal.`);
-  items.push('One useful move is enough; the app is not asking for a life overhaul.');
-  return items.slice(0, 5);
-}
-
-function makeRelease(signals) {
-  const [top] = primarySignals(signals);
-  if (!top) return 'Release the pressure to make a quiet day more dramatic than it is.';
-  return `Release ${aspectLanguage(top.aspect).risk} around ${targetNoun(top.natalTarget)}.`;
-}
-
-function makeAct(signals) {
-  const [top] = primarySignals(signals);
-  if (!top) return 'Choose one small action that makes the body feel more settled.';
-  return `Make one clean move that lets ${bodyNoun(top.transitingBody)} speak without taking over the whole day.`;
-}
-
-function localReading(input) {
-  const { natalChart, currentSky, signals } = input;
-  const activations = makeActivations(signals, currentSky);
-  const body = makeBody(input);
-  return normalizeReadingShape({
-    schemaVersion: 2,
-    promptVersion: DAILY_PROMPT_VERSION,
-    source: 'local-symbolic-engine',
-    sourceDetail: readingSourceMetadata({ currentSky, signals }),
-    generatedAt: new Date().toISOString(),
-    dateKey: currentSky.localDateKey,
-    headline: makeHeadline(currentSky, signals),
-    body,
-    summaryLine: makeSummaryLine(currentSky, signals),
-    glanceItems: makeGlanceItems(input),
-    loudestSignals: makeLoudestSignals(signals),
-    fullReading: body,
-    release: makeRelease(signals),
-    act: makeAct(signals),
-    lunarAxis: makeLunarAxis(natalChart, currentSky),
-    activations,
-    receipts: makeReceipts(currentSky, signals),
-    notice: makeNotice(input),
-    avoid: makeAvoid(signals),
-  });
 }
 
 function providerPayload({ natalChart, currentSky, signals }) {
@@ -510,7 +42,6 @@ function providerPayload({ natalChart, currentSky, signals }) {
     dateKey: currentSky.localDateKey,
     localDate: currentSky.localDate,
     localTime: currentSky.localTime,
-    place: currentSky.place?.name,
     lunar: currentSky.lunar,
     natal: {
       bodies: natalChart.bodies,
@@ -545,24 +76,6 @@ function providerSourceMetadata(mode) {
       'AI language synthesis',
     ],
     caveat: 'The provider writes the prose; it does not make the astronomy more objective or more authoritative.',
-  };
-}
-
-function fallbackSourceMetadata(reason = 'AI interpretation did not complete.') {
-  return {
-    label: 'Rough local interpretation',
-    metadataVersion: SOURCE_METADATA_VERSION,
-    summary: 'This is generated on device from calculated chart receipts. It is a fallback, not the full model-written interpretation.',
-    systems: [
-      'True-sky sidereal astronomy',
-      'Modern Western astrology',
-      'Traditional Western astrology',
-      'Lunar cycle practice',
-      'Solar cycle practice',
-      'Somatic reflective practice',
-      'MoonTurtle local fallback',
-    ],
-    caveat: `${reason} MoonTurtle is showing the local deterministic fallback so the receipts are still useful.`,
   };
 }
 
@@ -627,11 +140,11 @@ export function engineForSettings(settings = {}) {
     return {
       mode,
       provider: 'local',
-      providerSurface: 'Local deterministic fallback',
-      modelId: 'local-symbolic-engine',
-      modelLabel: 'Local deterministic',
+      providerSurface: LOCAL_ENGINE_LABEL,
+      modelId: LOCAL_ENGINE_ID,
+      modelLabel: LOCAL_ENGINE_LABEL,
       reasoningEffort: null,
-      displayName: 'Local deterministic fallback',
+      displayName: LOCAL_ENGINE_LABEL,
       isLocal: true,
       isAi: false,
     };
@@ -780,13 +293,13 @@ function finalizeReading(reading, input, overrides = {}) {
     modeLabel,
     engine,
     providerMeta: isFallback ? null : engine,
-    engineLabel: isFallback ? 'Local deterministic fallback' : formatEngineLabel(engine),
-    modelLabel: isFallback ? 'Local deterministic' : engine.modelLabel,
     isFallback,
     fallbackReason: overrides.fallbackReason ?? null,
     providerAttempted: overrides.providerAttempted ?? false,
     aiAttempt: overrides.aiAttempt ?? null,
     sourceDetail: overrides.sourceDetail ?? normalized.sourceDetail,
+    engineLabel: isFallback && engine.provider === 'local' ? formatEngineLabel(engine) : (isFallback ? 'Local deterministic fallback' : formatEngineLabel(engine)),
+    modelLabel: isFallback && engine.provider === 'local' ? engine.modelLabel : (isFallback ? 'Local deterministic' : engine.modelLabel),
   };
 }
 
@@ -797,18 +310,7 @@ function fallbackReading(local, input, { startedAt, code, message, detail, provi
     isFallback: true,
     fallbackReason: reason,
     providerAttempted,
-    engine: {
-      mode: 'local',
-      provider: 'local',
-      providerSurface: 'Local deterministic fallback',
-      modelId: 'local-symbolic-engine',
-      modelLabel: 'Local deterministic',
-      reasoningEffort: null,
-      displayName: 'Local deterministic fallback',
-      attemptedEngine: engine,
-      isLocal: true,
-      isAi: false,
-    },
+    engine: localEngineMeta(engine),
     aiAttempt: aiAttempt({
       status: providerAttempted ? 'failed' : 'skipped',
       engine,
@@ -817,7 +319,11 @@ function fallbackReading(local, input, { startedAt, code, message, detail, provi
       message: reason,
       detail,
     }),
-    sourceDetail: fallbackSourceMetadata(reason),
+    sourceDetail: localEngineSourceMetadata({
+      currentSky: input.currentSky,
+      signals: input.signals,
+      reason,
+    }),
   });
 }
 
@@ -1283,7 +789,7 @@ export async function generateAskAnswer(input) {
 }
 
 export async function generateReading(input) {
-  const local = localReading(input);
+  const local = generateLocalReading(input);
   const mode = aiMode(input.settings);
   const startedAt = new Date().toISOString();
   if (!shouldAttemptProvider(input.settings)) {
@@ -1340,6 +846,13 @@ export async function generateReading(input) {
     const remote = normalizeReadingShape(await response.json());
     const validation = validateReadingProse(remote);
     if (!validation.ok) {
+      recordReadingValidationEvent({
+        input,
+        code: validation.errors.some((error) => error.includes('Forbidden phrase'))
+          ? 'voice_validation_failed'
+          : 'reading_schema_invalid',
+        errors: validation.errors,
+      });
       return fallbackReading(local, input, {
         startedAt,
         code: validation.errors.some((error) => error.includes('Forbidden phrase'))
@@ -1350,7 +863,7 @@ export async function generateReading(input) {
       });
     }
     const engine = engineFromRemote(validation.normalized, input.settings);
-    return finalizeReading({
+    const finalized = finalizeReading({
       ...local,
       ...validation.normalized,
       source: validation.normalized.source ?? 'provider',
@@ -1367,6 +880,8 @@ export async function generateReading(input) {
         message: 'AI interpretation completed and passed schema validation.',
       }),
     });
+    recordAiCalibration({ input, reading: finalized, engine });
+    return finalized;
   } catch (error) {
     return fallbackReading(local, input, {
       startedAt,

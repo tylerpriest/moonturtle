@@ -63,7 +63,7 @@ export function buildReadingSharePayload({ reading, sky, entry } = {}) {
   const lunar = lunarSummary({ sky, entry });
   const activations = reading?.activations ?? [];
   const fallbackLine = reading?.isFallback
-    ? 'Source note: rough local fallback from calculated receipts.'
+    ? 'Source note: MoonTurtle local synthesis from calculated receipts.'
     : '';
 
   const text = compactLines([

@@ -138,8 +138,8 @@ export function validateReadingProse(reading, {
   if (!normalized.lunarAxis?.natalSign) errors.push('Missing lunarAxis natal sign.');
   if (!normalized.lunarAxis?.currentSign) errors.push('Missing lunarAxis current sign.');
   if (!normalized.lunarAxis?.reading) errors.push('Missing lunarAxis reading.');
-  if (normalized.activations.length !== 5) {
-    errors.push(`Expected exactly 5 activations, received ${normalized.activations.length}.`);
+  if (normalized.activations.length < 1 || normalized.activations.length > 3) {
+    errors.push(`Expected 1 to 3 activations, received ${normalized.activations.length}.`);
   }
   normalized.activations.forEach((activation, index) => {
     if (!activation.title) errors.push(`Activation ${index + 1} is missing title.`);

@@ -66,8 +66,8 @@ const DAILY_READING_SCHEMA = {
     },
     activations: {
       type: 'array',
-      minItems: 5,
-      maxItems: 5,
+      minItems: 1,
+      maxItems: 3,
       items: {
         type: 'object',
         additionalProperties: false,
@@ -177,7 +177,7 @@ Voice rules:
 
 Content rules:
 - Use the provided true-sky sidereal / actual-sky IAU constellation data as receipts.
-- Choose only the loudest one to three signals, then return exactly 5 activation cards that explore those signals without padding.
+- Choose only the loudest one to three signals, then return one to three activation cards without padding.
 - Preserve agency: no fatalism, no prediction language, no commands disguised as cosmic certainty.
 - Do not mention birth date, birth time, exact coordinates, providers, APIs, or implementation details.
 - Match this exact JSON shape: headline, body, summaryLine, glanceItems, loudestSignals, fullReading, release, act, lunarAxis, activations, notice, avoid.

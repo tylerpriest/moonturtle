@@ -27,6 +27,16 @@ function groupJournal(journal) {
   return groups;
 }
 
+function orderEntries(entries = [], currentReadingId) {
+  return [...entries].sort((a, b) => {
+    const aCurrent = a.readingId === currentReadingId;
+    const bCurrent = b.readingId === currentReadingId;
+    if (aCurrent !== bCurrent) return aCurrent ? -1 : 1;
+    if (Boolean(a.preferred) !== Boolean(b.preferred)) return a.preferred ? -1 : 1;
+    return 0;
+  });
+}
+
 function ribbonFromGroups(groups) {
   return groups.slice(0, 14).reverse();
 }
@@ -42,7 +52,7 @@ function compactDateLabel(group) {
 }
 
 function modeBadge(entry) {
-  if (entry.isFallback) return 'Fallback · Local deterministic';
+  if (entry.isFallback) return 'Local engine · MoonTurtle';
   return `${entry.modeLabel ?? 'Quick glance'} · ${entry.modelLabel ?? 'GPT-5.5'}`;
 }
 
@@ -192,9 +202,9 @@ function ReadingDetail({ selected, onBack }) {
           <>
             {reading.isFallback && (
               <div className="fallback-banner" style={{marginTop:0}}>
-                <div className="eyebrow" style={{color:'var(--terracotta)'}}>Fallback shown</div>
+                <div className="eyebrow" style={{color:'var(--terracotta)'}}>Local engine shown</div>
                 <p className="body-prose" style={{fontSize:15, marginTop:5}}>
-                  This reading is a rough local interpretation from calculated receipts.
+                  This reading is MoonTurtle local synthesis from calculated receipts.
                 </p>
                 <FailureDetails reading={reading}/>
               </div>
@@ -282,14 +292,20 @@ function ReadingDetail({ selected, onBack }) {
 
 export function JournalScreen({ state }) {
   const [selected, setSelected] = useState(null);
+  const [expandedDates, setExpandedDates] = useState({});
   const journal = state?.journal ?? [];
   const groups = groupJournal(journal);
   const ribbon = ribbonFromGroups(groups);
+  const currentReadingId = state?.reading?.readingId;
 
   function openEntry(entry) {
     const archived = getArchivedReading(entry.birthHash, entry.readingId);
     const current = state?.reading?.readingId === entry.readingId ? state.reading : null;
     setSelected({ entry, reading: archived ?? current });
+  }
+
+  function toggleDate(dateKey) {
+    setExpandedDates((prev) => ({ ...prev, [dateKey]: !prev[dateKey] }));
   }
 
   if (selected) {
@@ -350,12 +366,14 @@ export function JournalScreen({ state }) {
                 <div className="eyebrow">{group.localDate}</div>
                 <div style={{display:'flex', gap:6, flexWrap:'wrap', justifyContent:'flex-end'}}>
                   {group.dateKey === state?.sky?.localDateKey && <div className="chip" style={{padding:'2px 7px', fontSize:9}}>Today</div>}
-                  {group.entries.length > 1 && <div className="chip" style={{padding:'2px 7px', fontSize:9}}>{group.entries.length} variants</div>}
+                  {group.entries.length > 1 && <div className="chip" style={{padding:'2px 7px', fontSize:9}}>{group.entries.length} readings</div>}
                 </div>
               </div>
               <div className="meta" style={{marginBottom:10}}>Moon in {group.moonSign} · {group.illumination}% lit</div>
               <div style={{display:'flex', flexDirection:'column', gap:10}}>
-                {group.entries.map((entry, variantIndex) => (
+                {orderEntries(group.entries, currentReadingId)
+                  .slice(0, expandedDates[group.dateKey] ? undefined : 1)
+                  .map((entry, variantIndex) => (
                   <button
                     type="button"
                     key={entry.readingId ?? `${entry.dateKey}-${variantIndex}`}
@@ -390,6 +408,15 @@ export function JournalScreen({ state }) {
                     </div>
                   </button>
                 ))}
+                {group.entries.length > 1 && (
+                  <button
+                    type="button"
+                    className="journal-toggle-button"
+                    onClick={() => toggleDate(group.dateKey)}
+                  >
+                    {expandedDates[group.dateKey] ? 'Hide other readings' : `Show ${group.entries.length - 1} other reading${group.entries.length === 2 ? '' : 's'}`}
+                  </button>
+                )}
               </div>
             </div>
           </div>

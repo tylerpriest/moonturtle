@@ -1,4 +1,4 @@
 export const PROVIDER_STATUS = {
-  local: 'local-symbolic-engine',
+  local: 'moonturtle-local-engine-v1',
   hosted: 'anthropic-provider',
 };

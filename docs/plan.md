@@ -4,7 +4,7 @@
 
 MoonTurtle is a sidereal astrology app. A beautiful static prototype exists at `/home/claude/moonturtle/` (Vite + React, 5 screens + onboarding) — but every value is hardcoded to one demo user (Tyler Priest, 13 April 1989, Tauranga NZ → now in Manly Sydney). It's a gorgeous design demo, not a product.
 
-The user has shared their existing **Master Prompt — True-Sky Sidereal Cosmic Operating System** (25 numbered parts, ~5000 words). This is the philosophical, voice, and quality-rule foundation that has been used in direct AI chats. The MoonTurtle UI surfaces only a **curated subset** of those 25 parts (primary headline+body, 5 activations, lunarAxis.reading, notice[4], avoid[4]) — the most contemplation-worthy slices, not the full long-form. The master prompt becomes the spine of the API system prompt; the UI is the curated mirror.
+The user has shared their existing **Master Prompt — True-Sky Sidereal Cosmic Operating System** (25 numbered parts, ~5000 words). This is the philosophical, voice, and quality-rule foundation that has been used in direct AI chats. The MoonTurtle UI surfaces only a **daily basic** subset of those 25 parts (primary headline+body, 1-3 activations, lunarAxis.reading, notice[4], avoid[4]) — the most useful slices, not the full long-form. The master prompt becomes the spine of the API system prompt; the UI is the curated mirror.
 
 Second seed user added this round: **Ali Sunflowers — born 23 June 1983, 17:58, Melbourne; current location Sydney**. Tyler and Ali together are the two voice-calibration exemplars.
 
@@ -166,17 +166,17 @@ See `docs/open-source-astrology-tools.md` for source links and tradeoffs.
 
 ### Reading engine — Claude Opus 4.7 via Cloudflare Worker
 - **Model:** `claude-opus-4-7`. Voice control is the product; Sonnet won't hold the knife-edge between contemplation and prescription.
-- **Endpoint:** `POST /api/reading` returns structured JSON matching `MT_DATA`'s prose shape (primary, activations[5], lunarAxis.reading, notice[4], avoid[4]).
+- **Endpoint:** `POST /api/reading` returns structured JSON matching the daily basic prose shape (primary, activations[1-3], lunarAxis.reading, notice[4], avoid[4]).
 - **BYO API key (local dev):** `.env.local` with `ANTHROPIC_API_KEY=...` is read by the Vite dev server / local Worker. All calls bill the user's Anthropic account.
 - **BYO API key (hosted, optional Phase 2):** Settings screen lets users paste their own key into localStorage; the Worker uses it via a header (`X-User-Provider-Key`) if present, else falls back to `env.ANTHROPIC_API_KEY`.
 - **System prompt = distilled Master Prompt + voice exemplars.** 5 cached blocks:
   1. **Identity & Philosophy** (~600 tokens) — sidereal-only mandate, "reading first, receipts second," "meaningful enough to contemplate, never absolute enough to obey," no fatalism, no horoscope-column English, the "loudest 1-3 signals" rule from the master prompt Part 0.
   2. **Voice rules** (~800 tokens) — Cormorant-serif register, no "energy/vibes/alignment/manifestation," metaphor over instruction, second-person never imperative; master-prompt "Quality rules" and "Avoid" lists folded in here.
-  3. **Curation rules** (~500 tokens) — the API output is the *curated* slice of the master prompt's 25 parts. Map: `primary.headline+body` ≈ master Parts 2+24; `activations[5]` ≈ Parts 6+7+12 compressed; `lunarAxis.reading` ≈ Part 11 (Moon vs Sun synthesis); `notice[4]` ≈ Parts 17+18 trust-side; `avoid[4]` ≈ Parts 17+18+23 shadow-side. The Worker chooses the 1-3 loudest signals before generating; it does NOT enumerate every transit.
+  3. **Curation rules** (~500 tokens) — the API output is the *curated* slice of the master prompt's 25 parts. Map: `primary.headline+body` ≈ master Parts 2+24; `activations[1-3]` ≈ Parts 6+7+12 compressed; `lunarAxis.reading` ≈ Part 11 (Moon vs Sun synthesis); `notice[4]` ≈ Parts 17+18 trust-side; `avoid[4]` ≈ Parts 17+18+23 shadow-side. The Worker writes from the 1-3 loudest signals and does NOT enumerate every transit.
   4. **Schema description** (~400 tokens) — the JSON shape the screens consume.
   5. **Exemplars** (~3000 tokens, `cache_control: ephemeral 1h`) — Tyler's current reading from `data.js` verbatim, wrapped in `<exemplar id="tyler-pisces-gemini">`. Ali's reading added in Phase 2 once generated (`<exemplar id="ali-cancer-melbourne">`). Followed by an explicit "the exemplars are voice references only; never reference their user, birth data, or city in your output."
 - **Total system prompt ~5300 tokens cached.** User message ~600 tokens (today's chart + user meta). Per reading cost: **~$0.04 cached, ~$0.08 cold**.
-- **Schema enforcement:** structured outputs (`output_config.format.json_schema`), not tool-use. JSON Schema can't enforce `minItems`/`maxItems`, so prompt says "exactly 5 activations / exactly 4 notice / exactly 4 avoid" and the Worker validates server-side, retrying once if counts are wrong.
+- **Schema enforcement:** structured outputs (`output_config.format.json_schema`), not tool-use. The Worker validates one to three activations, exactly four notice items, and exactly four avoid items, retrying once if counts are wrong.
 - **Astronomy computed client-side**, prose computed server-side. The Worker never sees raw birth data, only the chart — privacy story matches the Method screen's pitch.
 - **Master-prompt fallback:** if astronomy.js cannot compute a chart confidently (unknown birth time, geocoding failure), the API returns a "needs more info" response and the UI prompts for a true-sky sidereal screenshot — preserving the master prompt's own fallback rule ("If you cannot calculate the full true-sky sidereal chart, ask me for a screenshot before continuing").
 
@@ -280,9 +280,9 @@ Note: Phase 0 restructures the existing prototype into module folders. Paths bel
 1. **Regression check (astronomy — Tyler):** enter Tyler's birth → output must match `src/seed/tyler.js` and `docs/seed-users.md` within the documented tolerance (Sun Pisces 9th, Moon Gemini 12th, Asc Gemini, etc.). If Sun comes out Aries, the true-sky sign lookup is wrong or bypassed.
 2. **Regression check (astronomy — Ali):** enter 23 June 1983, 17:58 Melbourne → assert against `docs/seed-users.md`. Ali's Sun must remain Gemini under MoonTurtle's IAU convention.
 3. **Current sky sanity:** Sky screen for any timestamp + location must match a sanity-check from `timeanddate.com` (lunar illumination ±0.5%, moonrise/moonset ±2 min).
-4. **Reading shape:** generated reading must have `activations.length === 5`, `notice.length === 4`, `avoid.length === 4`. Worker retries once; logs if final response is malformed.
+4. **Reading shape:** generated reading must have `activations.length >= 1 && activations.length <= 3`, `notice.length === 4`, `avoid.length === 4`. Worker retries once; logs if final response is malformed.
 5. **Voice check (no exemplar bleed):** generate readings for Ali → confirm no leaks of "Tyler," "Tauranga," or "Manly" from the exemplar. Once Ali's reading is added as a second exemplar, generate for a third test birth and check neither exemplar's specifics leak.
-6. **Voice check (loudest signals rule):** generated reading must NOT enumerate every planetary placement — verify the 5 activations focus on the loudest 1-3 sky signals as per master prompt Part 0.
+6. **Voice check (loudest signals rule):** generated reading must NOT enumerate every planetary placement — verify the activations focus on the loudest 1-3 sky signals as per master prompt Part 0.
 7. **Forbidden-word check:** grep generated reading for "energy", "vibes", "alignment", "manifestation", "the universe", "abundance" — must be zero hits.
 8. **Cache hits:** after 3 readings, `response.usage.cache_read_input_tokens` should be ~5000. If 0, the system prompt is changing between requests.
 9. **Master-prompt fallback:** enter a birth with unknown time → API returns "needs more info" and the UI prompts for a sidereal screenshot rather than fabricating houses/Ascendant.

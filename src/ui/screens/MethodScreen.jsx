@@ -39,6 +39,47 @@ function SymbolicSources() {
   );
 }
 
+function PromptTransparency() {
+  return (
+    <div className="card" style={{padding:'20px 20px 18px'}}>
+      <div className="section-label">Reading Prompt</div>
+      <h2 className="h-card" style={{fontSize:19, marginBottom:6}}>Today gets the short form.</h2>
+      <p className="body-prose" style={{fontSize:15, marginBottom:14}}>
+        The Today screen uses a daily basic prompt. It checks the sky broadly, but only writes from the loudest one to three signals that touch the natal chart.
+      </p>
+      <div style={{padding:'14px', border:'1px solid var(--hairline)', background:'rgba(253,248,236,0.72)'}}>
+        <div className="eyebrow">Daily task</div>
+        <p className="body-prose" style={{fontSize:15, marginTop:8}}>
+          Check Moon phase, Moon constellation, Moon and Sun house transits, major aspects, personal and social planet transits, Nodes, eclipses, retrogrades, visible planets, elemental balance, body tone, connection themes, dreams, symbols, and local sky visibility.
+        </p>
+        <p className="body-prose" style={{fontSize:15, marginTop:10}}>
+          Do not include everything. Choose only the loudest one to three signals, then explain what they ask the person to feel, notice, release, express, or act on.
+        </p>
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'1fr', gap:10, marginTop:14}}>
+        <div style={{borderTop:'1px solid var(--hairline)', paddingTop:10}}>
+          <div className="h-card" style={{fontSize:16}}>Calculated locally</div>
+          <p className="meta" style={{marginTop:3, lineHeight:1.45, letterSpacing:'0.03em'}}>
+            Birth chart, current sky, Moon phase, houses, true-sky signs, and ranked signal receipts.
+          </p>
+        </div>
+        <div style={{borderTop:'1px solid var(--hairline)', paddingTop:10}}>
+          <div className="h-card" style={{fontSize:16}}>Written interpretively</div>
+          <p className="meta" style={{marginTop:3, lineHeight:1.45, letterSpacing:'0.03em'}}>
+            The headline, prose, Moon-axis synthesis, notice items, and avoid items. This can be AI-written or local fallback.
+          </p>
+        </div>
+        <div style={{borderTop:'1px solid var(--hairline)', paddingTop:10}}>
+          <div className="h-card" style={{fontSize:16}}>Comprehensive prompt</div>
+          <p className="meta" style={{marginTop:3, lineHeight:1.45, letterSpacing:'0.03em'}}>
+            The long-form 25-part prompt is kept as a voice and product reference. It should not be dumped into Today unless long-form mode becomes a deliberate feature.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const AI_OPTIONS = [
   {
     id: 'auto',
@@ -68,7 +109,7 @@ const AI_OPTIONS = [
     id: 'local',
     label: 'Local',
     title: 'No AI',
-    body: 'Use the built-in symbolic engine only. This is clearly marked as a rough local fallback.',
+    body: 'Use the MoonTurtle local synthesis engine only. AI remains primary when enabled; this mode is deterministic and receipt-based.',
   },
 ];
 
@@ -164,13 +205,14 @@ function CodexQualityChoice({ settings, onSettingsChange }) {
 function sourceLabel(reading) {
   const source = reading?.source;
   const providerAttempted = reading?.providerAttempted;
-  if (reading?.isFallback) return 'Rough local fallback';
+  if (reading?.isFallback) return reading?.sourceDetail?.label ?? 'MoonTurtle local synthesis';
+  if (source === 'local-moonturtle-engine') return 'MoonTurtle local synthesis';
   if (source === 'local-codex-subscription') return 'Codex subscription';
   if (source === 'local-claude-subscription') return 'Claude subscription';
   if (source === 'user-openai-key') return 'Your OpenAI API key';
   if (source === 'user-anthropic-key') return 'Your Anthropic API key';
   if (source === 'anthropic-provider') return 'Hosted Claude API';
-  if (providerAttempted) return 'Local symbolic fallback';
+  if (providerAttempted) return 'MoonTurtle local synthesis';
   return 'Local symbolic engine';
 }
 
@@ -212,7 +254,7 @@ function EngineStatus({ settings, state }) {
   const elapsed = useElapsedSeconds(loading?.startedAt, Boolean(loading));
   const statusLabel = loading?.statusLabel
     ?? state?.interpretationStatus?.statusLabel
-    ?? (reading?.isFallback ? 'Fallback shown' : 'Saved');
+    ?? (reading?.isFallback ? 'Local engine shown' : 'Saved');
   const detail = loading?.detail
     ?? state?.interpretationStatus?.detail
     ?? reading?.aiAttempt?.message
@@ -451,9 +493,12 @@ function AISettings({ settings, state, onSettingsChange }) {
         <CodexQualityChoice settings={settings} onSettingsChange={onSettingsChange}/>
       )}
 
-      <ProviderKeys settings={settings} onSettingsChange={onSettingsChange}/>
-
-      {active === 'api-key' && <ApiProviderChoice settings={settings} onSettingsChange={onSettingsChange}/>}
+      {active === 'api-key' && (
+        <>
+          <ProviderKeys settings={settings} onSettingsChange={onSettingsChange}/>
+          <ApiProviderChoice settings={settings} onSettingsChange={onSettingsChange}/>
+        </>
+      )}
 
       <div style={{marginTop:16, paddingTop:14, borderTop:'1px solid var(--hairline)'}}>
         <div className="eyebrow">Current status</div>
@@ -477,11 +522,7 @@ export function MethodScreen({ settings, state, onSettingsChange, onResetLocalDa
 
       <div style={{height:22}}/>
 
-      <AISettings settings={settings} state={state} onSettingsChange={onSettingsChange}/>
-
-      <div style={{height:24}}/>
-
-      <LocalDataControls onResetLocalData={onResetLocalData}/>
+      <PromptTransparency/>
 
       <div style={{height:24}}/>
 
@@ -514,6 +555,25 @@ export function MethodScreen({ settings, state, onSettingsChange, onResetLocalDa
         title="Your agency comes first."
         body="If a reading lands as instructive, contemplate it. If it feels off, set it down. You are not under obligation to the sky."
       />
+
+      <div style={{height:24}}/>
+
+      <details className="settings-disclosure">
+        <summary>
+          <span>
+            <span className="eyebrow">Advanced</span>
+            <span className="settings-disclosure-title">Engine controls</span>
+          </span>
+          <span className="settings-disclosure-action">Details</span>
+        </summary>
+        <div className="settings-disclosure-body">
+          <AISettings settings={settings} state={state} onSettingsChange={onSettingsChange}/>
+        </div>
+      </details>
+
+      <div style={{height:24}}/>
+
+      <LocalDataControls onResetLocalData={onResetLocalData}/>
 
       <div style={{height:24}}/>
 

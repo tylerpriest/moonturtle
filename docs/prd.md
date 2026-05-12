@@ -70,7 +70,7 @@ Requirements:
 - Show local date and a calm greeting.
 - Lead with primary reading headline and body.
 - Show Moon axis synthesis.
-- Show exactly five activation cards.
+- Show one to three activation cards for the loudest signals.
 - Show exactly four "notice" and four "avoid" items.
 - Provide a path to receipts without making receipts the main event.
 - Show meaningful loading states for sky, natal, signals, reading, validation, and save.
@@ -171,7 +171,7 @@ The UI expects:
 
 - `primary.headline`
 - `primary.body`
-- `activations[5]`, each with `title` and `reading`
+- `activations[1-3]`, each with `title` and `reading`
 - `lunarAxis.natalSign`
 - `lunarAxis.currentSign`
 - `lunarAxis.reading`
