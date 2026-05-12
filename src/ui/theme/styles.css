@@ -328,6 +328,36 @@ body {
   border: 1px solid rgba(176,74,38,0.42);
   background: rgba(176,74,38,0.08);
 }
+.journal-entry-button {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0;
+}
+.journal-entry-button:hover {
+  opacity: 0.86;
+}
+.journal-entry-button:focus-visible,
+.journal-back-button:focus-visible {
+  outline: 1px solid var(--terracotta);
+  outline-offset: 3px;
+}
+.journal-back-button {
+  font-family: var(--serif-sc);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--terracotta);
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+}
 
 @keyframes thinking-sweep {
   0% {

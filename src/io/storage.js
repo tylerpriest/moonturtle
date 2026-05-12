@@ -99,6 +99,10 @@ export function readingCacheKey(birthHash, date, aiMode = 'auto') {
   return `${PREFIX}reading:${birthHash}:${date}:${aiMode}`;
 }
 
+export function readingArchiveKey(birthHash, readingId) {
+  return `${PREFIX}reading-archive:${birthHash}:${readingId}`;
+}
+
 export function journalKey(birthHash) {
   return `${PREFIX}journal:${birthHash}`;
 }
