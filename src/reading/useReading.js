@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getJournal } from './cache.js';
 import { appendJournalEntry, getCachedReading, setArchivedReading, setCachedReading } from './cache.js';
-import { aiMode, engineForSettings, formatEngineLabel, generateReading } from './generate.js';
+import { DAILY_PROMPT_VERSION, aiMode, engineForSettings, formatEngineLabel, generateReading } from './generate.js';
 import { SOURCE_METADATA_VERSION } from './lexicon/index.js';
 
 function placeFor(user) {
@@ -58,6 +58,8 @@ function buildJournalEntry(user, sky, reading) {
 function cachedReadingIsCurrent(reading) {
   return (
     reading?.sourceDetail?.metadataVersion === SOURCE_METADATA_VERSION
+    && reading?.promptVersion === DAILY_PROMPT_VERSION
+    && reading?.schemaVersion === 2
     && Boolean(reading?.readingId)
     && Boolean(reading?.engine)
     && typeof reading?.isFallback === 'boolean'

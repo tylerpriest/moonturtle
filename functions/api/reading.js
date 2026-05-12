@@ -22,7 +22,11 @@ function extractJson(text) {
   return JSON.parse(match[0]);
 }
 
-function promptFor(payload) {
+function requestKind(payload = {}) {
+  return payload.requestKind === 'profile' || payload.requestKind === 'ask' ? payload.requestKind : 'daily';
+}
+
+function dailyPrompt(payload) {
   return `Write one MoonTurtle daily reading as strict JSON only.
 
 Rules:
@@ -33,10 +37,48 @@ Rules:
 - Do not mention birth date, birth time, or exact coordinates.
 
 Required JSON keys:
-headline, body, lunarAxis, activations, notice, avoid.
+headline, body, summaryLine, glanceItems, loudestSignals, fullReading, release, act, lunarAxis, activations, notice, avoid.
 
 Input:
 ${JSON.stringify(payload, null, 2)}`;
+}
+
+function profilePrompt(payload) {
+  return `Write MoonTurtle's comprehensive Profile reading as strict JSON only.
+
+Rules:
+- This is the stable natal operating manual, not a daily transit.
+- Use only the provided true-sky sidereal natal receipts.
+- Do not recalculate, switch frameworks, or mention implementation details.
+- Preserve agency: no fatalism, predictions, or medical claims.
+
+Required JSON keys:
+profileSummary, corePattern, angles, chartRuler, natalMoon, majorClusters, strengths, shadows, howToUseDailyReadings, chartReceipts.
+
+Input:
+${JSON.stringify(payload, null, 2)}`;
+}
+
+function askPrompt(payload) {
+  return `Answer the user's MoonTurtle question as strict JSON only.
+
+Rules:
+- Use only the provided Profile, Today, Sky, signals, and Journal context.
+- If a source is missing, say so rather than inventing it.
+- Preserve agency and avoid fatalism.
+
+Required JSON keys:
+answer, sourceChips, followUps.
+
+Input:
+${JSON.stringify(payload, null, 2)}`;
+}
+
+function promptFor(payload) {
+  const kind = requestKind(payload);
+  if (kind === 'profile') return profilePrompt(payload);
+  if (kind === 'ask') return askPrompt(payload);
+  return dailyPrompt(payload);
 }
 
 export async function onRequestOptions() {
@@ -71,7 +113,7 @@ export async function onRequestPost({ request, env }) {
     },
     body: JSON.stringify({
       model: env.MT_MODEL || 'claude-opus-4-7',
-      max_tokens: 1400,
+      max_tokens: requestKind(payload) === 'profile' ? 2600 : 1600,
       temperature: 0.7,
       messages: [
         {

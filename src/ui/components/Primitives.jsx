@@ -161,13 +161,21 @@ export function TabBar({ active, onTab }) {
       icon: <SunGlyph size={20}/> },
     { id: 'sky',     label: 'Sky',
       icon: <MoonGlyph size={18} illumPct={74.6}/> },
-    { id: 'natal',   label: 'Natal',
+    { id: 'profile', label: 'Profile',
       icon: (
         <svg width="20" height="20" viewBox="0 0 20 20">
           <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="0.8"/>
           <circle cx="10" cy="10" r="4" fill="none" stroke="currentColor" strokeWidth="0.8"/>
           <line x1="2" y1="10" x2="18" y2="10" stroke="currentColor" strokeWidth="0.6"/>
           <line x1="10" y1="2" x2="10" y2="18" stroke="currentColor" strokeWidth="0.6"/>
+        </svg>
+      )},
+    { id: 'ask',     label: 'Ask',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 20 20">
+          <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="0.8"/>
+          <path d="M6.2 8.1 C6.8 5.9 9.1 4.9 11.2 5.5 C13.2 6.1 14 7.9 13.3 9.5 C12.7 11 11.2 11.5 10.2 12.4 C9.6 12.9 9.4 13.4 9.4 14.1" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+          <circle cx="9.4" cy="16" r="0.8" fill="currentColor"/>
         </svg>
       )},
     { id: 'journal', label: 'Journal',
@@ -177,14 +185,6 @@ export function TabBar({ active, onTab }) {
           <line x1="4" y1="6"  x2="14" y2="6"  stroke="currentColor" strokeWidth="0.6"/>
           <line x1="4" y1="10" x2="14" y2="10" stroke="currentColor" strokeWidth="0.6"/>
           <line x1="4" y1="14" x2="11" y2="14" stroke="currentColor" strokeWidth="0.6"/>
-        </svg>
-      )},
-    { id: 'method',  label: 'Settings',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 20 20">
-          <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="0.8"/>
-          <circle cx="10" cy="6.6" r="0.9" fill="currentColor"/>
-          <line x1="10" y1="9" x2="10" y2="14" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
         </svg>
       )},
   ];

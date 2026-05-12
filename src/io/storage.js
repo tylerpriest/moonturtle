@@ -127,6 +127,10 @@ export function readingCacheKey(birthHash, date, aiMode = 'auto') {
   return `${PREFIX}reading:${birthHash}:${date}:${aiMode}`;
 }
 
+export function profileReadingCacheKey(birthHash, promptVersion, aiMode = 'auto') {
+  return `${PREFIX}profile-reading:${birthHash}:${promptVersion}:${aiMode}`;
+}
+
 export function readingArchiveKey(birthHash, readingId) {
   return `${PREFIX}reading-archive:${birthHash}:${readingId}`;
 }

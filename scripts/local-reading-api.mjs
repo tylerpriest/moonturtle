@@ -5,15 +5,37 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
-const DEFAULT_MODEL_TIMEOUT_MS = 65000;
+const DEFAULT_MODEL_TIMEOUT_MS = 125000;
 
-const READING_SCHEMA = {
+const DAILY_READING_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['headline', 'body', 'lunarAxis', 'activations', 'notice', 'avoid'],
+  required: ['headline', 'body', 'summaryLine', 'glanceItems', 'loudestSignals', 'fullReading', 'release', 'act', 'lunarAxis', 'activations', 'notice', 'avoid'],
   properties: {
     headline: { type: 'string' },
     body: { type: 'string' },
+    summaryLine: { type: 'string' },
+    glanceItems: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 5 },
+    loudestSignals: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 3,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['title', 'activates', 'score', 'orb', 'reason'],
+        properties: {
+          title: { type: 'string' },
+          activates: { type: 'string' },
+          score: { type: 'number' },
+          orb: { type: 'number' },
+          reason: { type: 'string' },
+        },
+      },
+    },
+    fullReading: { type: 'string' },
+    release: { type: 'string' },
+    act: { type: 'string' },
     lunarAxis: {
       type: 'object',
       additionalProperties: false,
@@ -63,6 +85,46 @@ const READING_SCHEMA = {
   },
 };
 
+const PROFILE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['profileSummary', 'corePattern', 'angles', 'chartRuler', 'natalMoon', 'majorClusters', 'strengths', 'shadows', 'howToUseDailyReadings', 'chartReceipts'],
+  properties: {
+    profileSummary: { type: 'string' },
+    corePattern: { type: 'string' },
+    angles: { type: 'string' },
+    chartRuler: { type: 'string' },
+    natalMoon: { type: 'string' },
+    majorClusters: { type: 'string' },
+    strengths: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 5 },
+    shadows: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 5 },
+    howToUseDailyReadings: { type: 'string' },
+    chartReceipts: { type: 'array', items: { type: 'string' }, minItems: 4, maxItems: 12 },
+  },
+};
+
+const ASK_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['answer', 'sourceChips', 'followUps'],
+  properties: {
+    answer: { type: 'string' },
+    sourceChips: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 4 },
+    followUps: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 4 },
+  },
+};
+
+function requestKind(payload = {}) {
+  return payload.requestKind === 'profile' || payload.requestKind === 'ask' ? payload.requestKind : 'daily';
+}
+
+function schemaFor(payload = {}) {
+  const kind = requestKind(payload);
+  if (kind === 'profile') return PROFILE_SCHEMA;
+  if (kind === 'ask') return ASK_SCHEMA;
+  return DAILY_READING_SCHEMA;
+}
+
 function json(res, body, statusCode = 200) {
   res.statusCode = statusCode;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -97,7 +159,7 @@ function extractJson(text) {
   }
 }
 
-function promptFor(payload) {
+function dailyPrompt(payload) {
   return `Write one MoonTurtle daily reading as strict JSON only.
 
 Target:
@@ -117,17 +179,85 @@ Content rules:
 - Choose only the loudest one to three signals, then return 3 to 5 activation cards that explore those signals without padding.
 - Preserve agency: no fatalism, no prediction language, no commands disguised as cosmic certainty.
 - Do not mention birth date, birth time, exact coordinates, providers, APIs, or implementation details.
-- Match this exact JSON shape: headline, body, lunarAxis, activations, notice, avoid.
+- Match this exact JSON shape: headline, body, summaryLine, glanceItems, loudestSignals, fullReading, release, act, lunarAxis, activations, notice, avoid.
 
 Quality bar:
 - headline: 6-12 words, specific and memorable.
-- body: 3-5 sentences. Name today's central sky/natal interaction and what it asks the person to notice, release, express, or carry more cleanly.
+- summaryLine: one sentence naming the loudest daily ask.
+- glanceItems: 3-5 concrete quick-glance points, each specific to today and the natal chart.
+- body: 2-3 sentences, concise enough for the top card.
+- fullReading: 5-9 paragraphs with the quality of a careful ChatGPT reading, not a card caption.
+- release and act: one sentence each.
 - lunarAxis.reading: 2-4 sentences connecting natal Moon, current Moon, phase, and today's emotional lesson.
 - activation themes: living dynamics, not textbook definitions.
 - notice/avoid: short, concrete, reflective, not commands.
 
 Input:
 ${JSON.stringify(payload, null, 2)}`;
+}
+
+function profilePrompt(payload) {
+  return `Write MoonTurtle's comprehensive Profile reading as strict JSON only.
+
+Purpose:
+- This is the stable natal operating manual. It does not change each day.
+- The app has already calculated true-sky sidereal / IAU-boundary natal receipts.
+- Do not recalculate, dispute, or switch frameworks.
+- Do not mention implementation details, APIs, providers, or exact birth data.
+
+Voice:
+- Second person, emotionally intelligent, precise, warm, and practical.
+- Image-first, but not vague. No generic horoscope tone.
+- Use "may", "can", "asks", "invites", "often", "tends"; avoid fatalism and prediction.
+- Do not use: energy, vibes, alignment, manifestation, the universe, abundance, high vibration.
+
+Write the profile as a real reading, not a table explanation.
+
+Required JSON keys:
+profileSummary, corePattern, angles, chartRuler, natalMoon, majorClusters, strengths, shadows, howToUseDailyReadings, chartReceipts.
+
+Quality:
+- profileSummary: 1 memorable paragraph.
+- corePattern: 4-7 paragraphs synthesizing Sun, Moon, Ascendant, chart ruler, personal planets, nodes, and clusters.
+- angles/chartRuler/natalMoon/majorClusters: specific interpretive sections, 1-3 paragraphs each.
+- strengths and shadows: 3-5 concise but meaningful bullets each.
+- howToUseDailyReadings: explain how Today should read transits through this stable baseline.
+- chartReceipts: plain receipt strings from the provided natal chart.
+
+Input:
+${JSON.stringify(payload, null, 2)}`;
+}
+
+function askPrompt(payload) {
+  return `Answer the user's MoonTurtle question as strict JSON only.
+
+You are grounded Ask inside MoonTurtle.
+
+Rules:
+- Use only the provided context: Profile, Today, Sky, signals, and Journal.
+- If context is missing, say what is missing instead of inventing it.
+- Do not make unsupported claims or recalculate astrology.
+- Keep the answer warm, direct, and specific.
+- Preserve agency. No fatalism, prediction, medical advice, or commands.
+- Do not mention APIs or implementation details.
+
+Required JSON keys:
+answer, sourceChips, followUps.
+
+Quality:
+- answer: 2-6 paragraphs answering the exact question.
+- sourceChips: choose only from Profile, Today, Sky, Journal.
+- followUps: 2-4 natural next questions the user could ask.
+
+Input:
+${JSON.stringify(payload, null, 2)}`;
+}
+
+function promptFor(payload) {
+  const kind = requestKind(payload);
+  if (kind === 'profile') return profilePrompt(payload);
+  if (kind === 'ask') return askPrompt(payload);
+  return dailyPrompt(payload);
 }
 
 function normaliseReading(reading, source, providerMeta) {
@@ -325,16 +455,16 @@ function providerOrder(payload, mode, runners) {
   return clean.length ? clean : ['codex'];
 }
 
-async function runClaude(prompt) {
+async function runClaude(prompt, schema) {
   if (!(await commandExists('claude'))) throw new Error('Claude CLI is not installed.');
-  const schema = JSON.stringify(READING_SCHEMA);
+  const jsonSchema = JSON.stringify(schema);
   const { stdout } = await execFileAsync('claude', [
     '-p',
     prompt,
     '--output-format',
     'json',
     '--json-schema',
-    schema,
+    jsonSchema,
     '--tools',
     '',
     '--no-session-persistence',
@@ -345,7 +475,7 @@ async function runClaude(prompt) {
   return normaliseReading(extractJson(stdout), 'local-claude-subscription', claudeMeta());
 }
 
-async function runCodex(prompt, payload = {}) {
+async function runCodex(prompt, payload = {}, schema) {
   if (!(await commandExists('codex'))) throw new Error('Codex CLI is not installed.');
   const dir = await mkdtemp(join(tmpdir(), 'moonturtle-codex-'));
   const schemaPath = join(dir, 'reading.schema.json');
@@ -353,7 +483,7 @@ async function runCodex(prompt, payload = {}) {
   const modelId = codexModel(payload);
   const reasoningEffort = codexReasoning(payload);
   try {
-    await writeFile(schemaPath, JSON.stringify(READING_SCHEMA));
+    await writeFile(schemaPath, JSON.stringify(schema));
     const reading = await execFileWithInput('codex', [
       'exec',
       '--json',
@@ -396,7 +526,7 @@ async function runAnthropicApi(prompt, apiKey) {
     },
     body: JSON.stringify({
       model: process.env.MT_ANTHROPIC_MODEL || 'claude-opus-4-7',
-      max_tokens: 1400,
+      max_tokens: 2600,
       temperature: 0.7,
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -418,7 +548,7 @@ function outputTextFromOpenAi(data) {
   return parts.join('\n');
 }
 
-async function runOpenAiApi(prompt, apiKey, payload = {}) {
+async function runOpenAiApi(prompt, apiKey, payload = {}, schema) {
   const meta = openAiMeta(payload);
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -429,7 +559,7 @@ async function runOpenAiApi(prompt, apiKey, payload = {}) {
     body: JSON.stringify({
       model: meta.modelId,
       input: prompt,
-      max_output_tokens: 2200,
+      max_output_tokens: requestKind(payload) === 'profile' ? 4200 : 2600,
       reasoning: {
         effort: meta.reasoningEffort,
       },
@@ -438,7 +568,7 @@ async function runOpenAiApi(prompt, apiKey, payload = {}) {
           type: 'json_schema',
           name: 'moonturtle_reading',
           strict: true,
-          schema: READING_SCHEMA,
+          schema,
         },
       },
     }),
@@ -450,6 +580,9 @@ async function runOpenAiApi(prompt, apiKey, payload = {}) {
 
 async function generateReading(payload, { apiKey, apiProvider = 'openai' } = {}) {
   const prompt = promptFor(payload);
+  const schema = schemaFor(payload);
+  const kind = requestKind(payload);
+  const noun = kind === 'profile' ? 'profile' : (kind === 'ask' ? 'answer' : 'reading');
   const mode = payload.providerPreference ?? process.env.MOONTURTLE_LOCAL_PROVIDER ?? 'auto';
   const errors = [];
 
@@ -463,7 +596,7 @@ async function generateReading(payload, { apiKey, apiProvider = 'openai' } = {})
       };
     }
     try {
-      if (apiProvider === 'openai') return await runOpenAiApi(prompt, apiKey, payload);
+      if (apiProvider === 'openai') return await runOpenAiApi(prompt, apiKey, payload, schema);
       if (apiProvider !== 'anthropic') {
         return {
           error: {
@@ -484,8 +617,8 @@ async function generateReading(payload, { apiKey, apiProvider = 'openai' } = {})
   }
 
   const runners = {
-    claude: () => runClaude(prompt),
-    codex: () => runCodex(prompt, payload),
+    claude: () => runClaude(prompt, schema),
+    codex: () => runCodex(prompt, payload, schema),
   };
   const order = providerOrder(payload, mode, runners);
 
@@ -508,8 +641,8 @@ async function generateReading(payload, { apiKey, apiProvider = 'openai' } = {})
     error: {
       code: timedOut ? 'local_provider_timeout' : 'local_provider_unavailable',
       message: timedOut
-        ? `The local ${order[0] ?? 'AI'} subscription did not return a reading before the bridge timeout.`
-        : 'No local subscription provider was available to write the reading.',
+        ? `The local ${order[0] ?? 'AI'} subscription did not return a ${noun} before the bridge timeout.`
+        : `No local subscription provider was available to write the ${noun}.`,
       detail: errors,
     },
   };

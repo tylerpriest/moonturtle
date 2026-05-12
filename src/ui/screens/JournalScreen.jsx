@@ -199,7 +199,7 @@ function ReadingDetail({ selected, onBack }) {
                 <FailureDetails reading={reading}/>
               </div>
             )}
-            <p className="body-prose">{reading.body}</p>
+            <p className="body-prose">{reading.summaryLine ?? reading.body}</p>
             <div style={{marginTop:14, paddingTop:12, borderTop:'1px solid var(--hairline)'}}>
               <div className="meta">Engine: {engineLabel(entry, reading)}</div>
               {reading.aiAttempt?.message && (
@@ -211,6 +211,23 @@ function ReadingDetail({ selected, onBack }) {
           </>
         )}
       </div>
+
+      {!unavailable && reading.glanceItems?.length > 0 && (
+        <>
+          <div style={{height:18}}/>
+          <DetailList title="Quick Glance" color="var(--terracotta)" items={reading.glanceItems}/>
+        </>
+      )}
+
+      {!unavailable && (reading.fullReading || reading.body) && (
+        <>
+          <div style={{height:18}}/>
+          <div className="section-label">Full Reading</div>
+          <div className="card warm" style={{padding:'20px'}}>
+            <p className="body-prose">{reading.fullReading ?? reading.body}</p>
+          </div>
+        </>
+      )}
 
       {!unavailable && reading.lunarAxis && (
         <>

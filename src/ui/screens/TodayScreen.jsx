@@ -301,6 +301,46 @@ function FallbackNotice({ reading, onRetry }) {
   );
 }
 
+function DailyGlance({ reading }) {
+  const items = reading?.glanceItems?.length ? reading.glanceItems : reading?.notice ?? [];
+  if (!items.length) return null;
+  return (
+    <div className="card" style={{padding:'18px 20px', borderTop:'2px solid var(--terracotta)'}}>
+      <div className="section-label">Quick Glance</div>
+      <ul style={{listStyle:'none', display:'flex', flexDirection:'column', gap:10}}>
+        {items.slice(0, 5).map((item, index) => (
+          <li key={`${item}-${index}`} style={{display:'grid', gridTemplateColumns:'22px 1fr', gap:9, alignItems:'start'}}>
+            <span className="meta" style={{color:'var(--terracotta)', fontFamily:'var(--serif-sc)', fontSize:10}}>
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <span className="body-prose" style={{fontSize:15}}>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function LoudestSignals({ reading }) {
+  const signals = reading?.loudestSignals ?? [];
+  if (!signals.length) return null;
+  return (
+    <div className="card" style={{padding:'16px 18px'}}>
+      <div className="section-label">Why these signals</div>
+      <div style={{display:'flex', flexDirection:'column', gap:10}}>
+        {signals.slice(0, 3).map((signal, index) => (
+          <div key={`${signal.title}-${index}`} style={{borderTop:index ? '1px solid var(--hairline)' : 'none', paddingTop:index ? 10 : 0}}>
+            <div className="h-card" style={{fontSize:16}}>{signal.title}</div>
+            <p className="meta" style={{marginTop:4, lineHeight:1.45}}>
+              {signal.activates} · score {signal.score}{Number.isFinite(signal.orb) ? ` · ${signal.orb}° orb` : ''}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ReadingSource({ reading, fromCache }) {
   const detail = reading?.sourceDetail;
   const systems = detail?.systems ?? [];
@@ -405,7 +445,9 @@ export function TodayScreen({ state, user, onTab }) {
             <h1 className="h-display" style={{fontSize:26, marginBottom:14}}>
               {state.reading.headline}
             </h1>
-            <p className="body-prose">{state.reading.body}</p>
+            <p className="body-prose">
+              {state.reading.summaryLine ?? state.reading.body}
+            </p>
             <ReadingSource reading={state.reading} fromCache={state.fromCache}/>
             <div className="reading-actions">
               <ShareButton payload={sharePayload}/>
@@ -420,6 +462,39 @@ export function TodayScreen({ state, user, onTab }) {
               )}
             </div>
           </div>
+
+          <OrnamentDiv/>
+
+          <DailyGlance reading={state.reading}/>
+
+          <OrnamentDiv/>
+
+          <div className="section-label">Full Reading</div>
+          <div className="card warm" style={{padding:'22px'}}>
+            <p className="body-prose">
+              {state.reading.fullReading ?? state.reading.body}
+            </p>
+            {(state.reading.release || state.reading.act) && (
+              <div style={{marginTop:16, paddingTop:14, borderTop:'1px solid var(--hairline)', display:'flex', flexDirection:'column', gap:10}}>
+                {state.reading.release && (
+                  <div>
+                    <div className="eyebrow">Release</div>
+                    <p className="body-prose" style={{fontSize:15, marginTop:3}}>{state.reading.release}</p>
+                  </div>
+                )}
+                {state.reading.act && (
+                  <div>
+                    <div className="eyebrow">Act</div>
+                    <p className="body-prose" style={{fontSize:15, marginTop:3}}>{state.reading.act}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <OrnamentDiv/>
+
+          <LoudestSignals reading={state.reading}/>
 
           <OrnamentDiv/>
 
