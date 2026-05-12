@@ -119,14 +119,14 @@ The IAU constellation boundaries were defined in 1930 by Eugène Delporte. They 
 
 **Algorithm (entirely in pure JS, no external data shipped beyond what's already in `astronomy-engine`):**
 
-1. Compute absolute ecliptic longitude of the body with `astronomy-engine`.
-2. Convert (ecliptic longitude, ecliptic latitude=0) → equatorial (RA, Dec) using standard rotation.
+1. Convert the person's place and time into an observer and UTC instant.
+2. Compute each supported physical body's observer-sky position with `astronomy-engine`.
 3. Call `Astronomy.Constellation(ra, dec)` — `astronomy-engine` has a built-in IAU constellation lookup.
-4. Map the IAU constellation symbol (e.g. `Psc`, `Sco`) to its zodiac name. The 12 standard zodiac constellations + Ophiuchus are the 13 we care about; bodies that fall outside (which shouldn't happen on the ecliptic, but worth handling) get a fallback.
+4. Map the IAU constellation symbol (e.g. `Psc`, `Sco`) to its zodiac name. Nodes, angles, houses, and unsupported bodies use the documented ecliptic-boundary fallback.
 
 **Boundary convention (transparent, our choice — document and defend):**
 
-Because IAU constellations overlap on the ecliptic at different declinations, we have to pick a convention for "which constellation owns this ecliptic longitude." Pre-compute once, ship the result.
+Because nodes, angles, and houses are ecliptic points rather than bodies, we still have to pick a fallback convention for "which constellation owns this ecliptic longitude." Pre-compute once, ship the result.
 
 ```js
 // Build-time, generates src/domain/zodiac-boundaries.json (~13 rows)
@@ -144,18 +144,18 @@ function buildBoundaries() {
 }
 ```
 
-This is **first-crossing convention**: a constellation owns ecliptic longitudes from the moment the ecliptic enters its IAU polygon. Other conventions (centroid-time, midpoint) are valid alternatives — if we ever want to switch, it's a one-function change.
+This fallback is **first-crossing convention**: a constellation owns ecliptic longitudes from the moment the ecliptic enters its IAU polygon. Other astrology conventions (centroid-time, midpoint) remain comparable alternatives.
 
 **Why this beats any approach that depends on MTZ:**
 1. **Open and reproducible.** Anyone can re-run our build script and get the same boundaries.
-2. **Honestly framed.** The Method screen can say *"true-sky sidereal via IAU 1930 constellation boundaries, first-crossing convention on the ecliptic"* — exact and citable.
+2. **Honestly framed.** The Method screen can say physical bodies use observer-sky IAU containment and ecliptic points use a documented fallback — exact and citable.
 3. **No third-party dependency.** Doesn't break if MTZ changes their methodology, doesn't require licensing, doesn't risk being a copy.
 4. **Aligned with the master prompt.** Re-read the verbatim: *"ideally similar to the Mastering the Zodiac true sidereal midpoint method"* — *similar to*, not *copied from*. MTZ is one valid approach. We do our own and use MTZ as a sanity-check reference, not a data source.
-5. **Trivially extensible.** Once we have the IAU-projection pipeline, switching boundary conventions or adding "deep constellation" overlays (Sabian-style degree symbols, fixed stars) is the same machinery.
+5. **Trivially extensible.** Once we separate physical-body sky positions from ecliptic-point fallbacks, future comparison modes can be tested without blurring the receipts.
 
 **Recommended v1 tool stack:**
 - **`astronomy-engine`** (MIT, JS/browser-friendly) — primary sky engine for Sun/Moon/planet positions, moon phases, rise/set, coordinate transforms, and IAU constellation lookup.
-- **Custom IAU zodiac boundary table** — MoonTurtle-owned sign assignment from `src/domain/zodiac-boundaries.md`; no external true-sky zodiac package is trusted as the source of truth.
+- **Custom IAU ecliptic boundary fallback** — MoonTurtle-owned labels for nodes, angles, house cusps, and unsupported objects from `src/domain/zodiac-boundaries.md`; no external true-sky zodiac package is trusted as the source of truth.
 - **`celestine`** (MIT, TypeScript, zero runtime dependencies) — evaluate for Placidus houses, aspects, transits, retrogrades, and signal ranking. Use its math primitives only after regression checks pass; do not use its tropical zodiac labels for MoonTurtle signs.
 - **`@fusionstrings/swiss-eph`** or **`astro-sweph`** — precision fallback candidates only. Both are Swiss Ephemeris / AGPL-family paths, so they are fine if MoonTurtle stays open-source, but they should not be the first browser/PWA dependency.
 - **`circular-natal-horoscope-js`** — older fallback for houses if `celestine` fails verification. It is Unlicense and well-starred, but last npm publish is older and it bundles Moment.

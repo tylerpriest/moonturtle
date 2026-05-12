@@ -2,7 +2,7 @@
 
 Two real users. Both are voice-calibration exemplars and astronomical regression fixtures. **Every astronomy change must pass for both.**
 
-**Astronomy framework:** MoonTurtle true-sky sidereal via IAU 1930 constellation boundaries projected onto the ecliptic, first-crossing convention, Placidus houses. NOT tropical. NOT Lahiri ayanamsa with equal 30° signs. NOT copied MTZ boundary data.
+**Astronomy framework:** MoonTurtle true-sky sidereal via actual observer-sky body positions and IAU constellation containment, with documented ecliptic-boundary fallback for nodes, angles, and houses. NOT tropical. NOT Lahiri ayanamsa with equal 30° signs. NOT copied MTZ midpoint boundary data.
 
 The placements below began as prototype/voice fixtures. Phase 1 must recompute them with MoonTurtle's IAU implementation and update this file if a documented convention difference appears near a sign boundary.
 
@@ -38,7 +38,7 @@ The placements below began as prototype/voice fixtures. Phase 1 must recompute t
 | **Ascendant** | **Gemini** | — |
 | **Midheaven** | **Aries** | — |
 
-**Spica check:** Tyler's Sun must come out Pisces under MoonTurtle's true-sky sign lookup. If your implementation returns Aries, the IAU boundary table is wrong or bypassed.
+**Spica check:** Tyler's Sun must come out Pisces under MoonTurtle's true-sky sign lookup. If your implementation returns Aries, the actual-sky IAU lookup is wrong or bypassed.
 
 **Voice exemplar:** Tyler's full curated 5-section reading lives in `src/seed/tyler.js` and is referenced verbatim as the first `<exemplar>` block in `src/reading/prompt/05-exemplars.md`.
 
@@ -56,14 +56,16 @@ Phase 2 TODO: generate a full 25-part master prompt output for Tyler matching to
 
 **Currently:** Sydney, NSW, Australia (-33.8688, 151.2093)
 
-**Expected sidereal placements** (prototype true-sky fixture, Placidus houses — confirmed from the canonical voice reading at `docs/exemplars/ali-daily-2026-05-09.md`; recompute under IAU convention in Phase 1)
+**Expected sidereal placements** (prototype true-sky fixture, Placidus houses — confirmed from the canonical voice reading at `docs/exemplars/ali-daily-2026-05-09.md`; recompute under MoonTurtle's actual-sky IAU convention in Phase 1)
+
+**IAU correction note, 12 May 2026:** The prototype voice fixture placed Ali's Moon, Venus, and South Node from the earlier calculator/exemplar context. MoonTurtle's actual observer-sky lookup places Ali's Moon in Ophiuchus, Venus in Cancer, and the ecliptic South Node fallback in Ophiuchus. The regression fixture now follows the reproducible MoonTurtle convention rather than the older exemplar prose.
 
 | Body | Sign | House | Notes |
 |---|---|---|---|
 | Sun | Gemini | 6 | conjunct Mars, North Node; trine Saturn-Pluto; opposite Neptune |
-| Moon | Scorpio | 11 | conjunct Uranus + Jupiter; opposite Mercury |
+| Moon | Ophiuchus | 11 | actual observer-sky IAU lookup; part of the 11th-house cluster |
 | Mercury | Taurus | 6 | opposite natal Moon |
-| Venus | Leo | 8 | currently squared by transiting Sun |
+| Venus | Cancer | 8 | actual observer-sky IAU lookup |
 | Mars | Taurus | 6 | conjunct natal Sun + North Node |
 | Jupiter | Scorpio | 11 | **chart ruler** (Sagittarius rising); retrograde |
 | Saturn | Virgo | 10 | conjunct natal Pluto |
@@ -71,17 +73,17 @@ Phase 2 TODO: generate a full 25-part master prompt output for Tyler matching to
 | Neptune | Sagittarius | 12 | opposite natal Sun |
 | Pluto | Virgo | 10 | conjunct natal Saturn |
 | North Node | Taurus | 6 | growth direction: embodiment, daily rhythm |
-| South Node | Scorpio | 12 | (implied) |
+| South Node | Ophiuchus | 12 | ecliptic-point boundary fallback |
 | **Ascendant** | **Sagittarius** | — | chart ruler = Jupiter |
 | **Descendant** | **Gemini** | — | |
 | **Midheaven** | **Virgo** | — | |
 | **IC** | **Pisces** | — | |
 
 **Distinguishing checks for Ali:**
-- Sun sidereal Gemini (tropical Cancer — boundary case; verify MoonTurtle's IAU convention keeps late June in Gemini)
+- Sun sidereal Gemini (tropical Cancer — boundary case; verify MoonTurtle's actual-sky IAU convention keeps late June in Gemini)
 - Ascendant Sagittarius (depends on confirmed 17:58 AEST)
 - Jupiter is the **chart ruler** — should be flagged as such in the natal output
-- The Scorpio 11th-house stellium (Moon + Jupiter + Uranus) is the dominant emotional signature
+- The 11th-house Scorpio/Ophiuchus cluster (Moon + Jupiter + Uranus) is the dominant emotional signature
 
 **Voice exemplar:**
 - Daily long-form: `docs/exemplars/ali-daily-2026-05-09.md` (full 25 parts, Saturday 9 May 2026 in Sydney)
@@ -92,27 +94,10 @@ Phase 2 TODO: distill the daily long-form into a curated 5-section JSON exemplar
 
 ## Regression test
 
-Both users are imported into the astronomy unit test:
+Run:
 
-```js
-import { tyler } from "../seed/tyler";
-import { ali } from "../seed/ali";
-import { computeNatal } from "../domain/astronomy";
-
-for (const u of [tyler, ali]) {
-  const chart = computeNatal(u.user.birth);
-
-  for (const expected of u.expectedPlacements.bodies) {
-    const computed = chart.bodies.find(b => b.body === expected.body);
-    expect(computed.sign).toBe(expected.sign);
-    expect(computed.house).toBe(expected.house);
-  }
-
-  for (const expected of u.expectedPlacements.angles) {
-    const computed = chart.angles.find(a => a.angle === expected.angle);
-    expect(computed.sign).toBe(expected.sign);
-  }
-}
+```bash
+npm run check:astronomy
 ```
 
-**If either user fails, do not ship.** The voice exemplars in the prompt cache assume these placements are correct.
+The script checks Tyler, Ali, the 13-sign fallback table, unknown birth-time behavior, signal reason shape, and runtime tropical-label leakage. **If either seed user fails, do not ship.** If a near-boundary placement differs from an older voice exemplar, update this file with a dated convention note rather than bending the IAU math.

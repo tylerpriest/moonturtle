@@ -53,19 +53,19 @@ Use ISO timestamps internally. Format dates only at the UI edge.
 
 MoonTurtle signs use:
 
-- IAU 1930 constellation boundaries
-- projected onto the ecliptic
-- first-crossing convention
-- 13 zodiac constellations, including Ophiuchus
+- actual observer-sky body position for physical bodies
+- IAU 1930 constellation boundaries / containment lookup
+- 13 zodiac constellations, including Ophiuchus, when the body falls in one of those regions
+- documented ecliptic-boundary fallback for nodes, angles, houses, and unsupported bodies
 
 Do not use:
 
 - tropical 12-sign zodiac
 - equal 30-degree sidereal signs
 - Lahiri/Krishnamurti/Fagan-Bradley sign labels
-- copied MTZ boundary data
+- copied MTZ midpoint boundary data
 
-`astronomy-engine` should provide body positions and IAU constellation lookup. MoonTurtle owns the final sign lookup table generated from `src/domain/zodiac-boundaries.md`.
+`astronomy-engine` should provide physical-body sky positions and IAU constellation lookup. MoonTurtle's `src/domain/zodiac-boundaries.json` table remains a fallback for ecliptic points, not the primary physical-body sign source.
 
 ## Bodies
 
@@ -157,10 +157,10 @@ Sanity check against a public sky source:
 ```js
 {
   user: { name, birth },
-  bodies: [{ body, sign, longitude, latitude, house, retrograde, sym }],
-  angles: [{ angle, sign, longitude }],
+  bodies: [{ body, sign, longitude, latitude, house, retrograde, sym, signMethod, position }],
+  angles: [{ angle, sign, longitude, signMethod }],
   birthTimeKnown: true,
-  framework: "IAU_TRUE_SKY_FIRST_CROSSING",
+  framework: "IAU_ACTUAL_SKY_TOPOCENTRIC",
   houseSystem: "Placidus",
   nodeType: "True"
 }
@@ -175,7 +175,7 @@ Sanity check against a public sky source:
   lunar,
   bodies,
   visiblePlanets,
-  framework: "IAU_TRUE_SKY_FIRST_CROSSING"
+  framework: "IAU_ACTUAL_SKY_TOPOCENTRIC"
 }
 ```
 
@@ -192,4 +192,4 @@ Important checks:
 - Ali Sun must remain Gemini under MoonTurtle's convention.
 - Ali Ascendant must be Sagittarius when birth time is known.
 
-If the new IAU first-crossing implementation disagrees with prototype fixtures near a boundary, update the fixture with a dated note explaining the convention difference. Do not silently bend the math to match old prose.
+If the actual-sky IAU implementation disagrees with prototype fixtures near a boundary, update the fixture with a dated note explaining the convention difference. Do not silently bend the math to match old prose.

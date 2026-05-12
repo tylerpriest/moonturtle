@@ -3,6 +3,7 @@ import { getJournal } from './cache.js';
 import { appendJournalEntry, getCachedReading, setArchivedReading, setCachedReading } from './cache.js';
 import { aiMode, engineForSettings, formatEngineLabel, generateReading } from './generate.js';
 import { SOURCE_METADATA_VERSION } from './lexicon/index.js';
+import { PROMPT_VERSION, readingHashes } from './validation.js';
 
 function placeFor(user) {
   return user.currentPlace?.place ?? user.birth.place;
@@ -12,18 +13,30 @@ function timeZoneFor(user) {
   return user.currentPlace?.timeZone ?? user.birth.timeZone;
 }
 
-function cacheModeFor(settings) {
+function cacheModeFor(settings, hashes = null) {
   const mode = aiMode(settings);
   const model = settings.model?.trim() || 'gpt-5.5';
   const reasoning = settings.reasoningEffort?.trim() || 'xhigh';
-  if (mode === 'auto' || mode === 'codex') return `${mode}:${model}:${reasoning}`;
-  if (mode === 'claude') return mode;
-  if (mode !== 'api-key') return mode;
-  const provider = settings.apiProvider ?? 'openai';
-  const key = settings.apiKeys?.[provider]?.trim() || settings.apiKey?.trim();
-  return key
-    ? `api-key:${provider}:${model}:${reasoning}:configured`
-    : `api-key:${provider}:${model}:${reasoning}:empty`;
+  let base;
+  if (mode === 'auto' || mode === 'codex') base = `${mode}:${model}:${reasoning}`;
+  else if (mode === 'claude') base = mode;
+  else if (mode !== 'api-key') base = mode;
+  else {
+    const provider = settings.apiProvider ?? 'openai';
+    const key = settings.apiKeys?.[provider]?.trim() || settings.apiKey?.trim();
+    base = key
+      ? `api-key:${provider}:${model}:${reasoning}:configured`
+      : `api-key:${provider}:${model}:${reasoning}:empty`;
+  }
+
+  if (!hashes) return base;
+  return [
+    base,
+    `prompt=${hashes.promptVersion}`,
+    `chart=${hashes.chartHash}`,
+    `sky=${hashes.skyHash}`,
+    `signals=${hashes.signalsHash}`,
+  ].join(':');
 }
 
 function buildJournalEntry(user, sky, reading) {
@@ -40,6 +53,10 @@ function buildJournalEntry(user, sky, reading) {
     sourceLabel: reading.sourceDetail?.label,
     sourceMetadataVersion: reading.sourceDetail?.metadataVersion,
     contentSignature: reading.contentSignature,
+    promptVersion: reading.promptVersion,
+    chartHash: reading.chartHash,
+    skyHash: reading.skyHash,
+    signalsHash: reading.signalsHash,
     readingMode: reading.readingMode ?? 'quick-glance',
     modeLabel: reading.modeLabel ?? 'Quick glance',
     engine: reading.engine,
@@ -55,9 +72,13 @@ function buildJournalEntry(user, sky, reading) {
   };
 }
 
-function cachedReadingIsCurrent(reading) {
+function cachedReadingIsCurrent(reading, hashes) {
   return (
     reading?.sourceDetail?.metadataVersion === SOURCE_METADATA_VERSION
+    && reading?.promptVersion === PROMPT_VERSION
+    && reading?.chartHash === hashes.chartHash
+    && reading?.skyHash === hashes.skyHash
+    && reading?.signalsHash === hashes.signalsHash
     && Boolean(reading?.readingId)
     && Boolean(reading?.engine)
     && typeof reading?.isFallback === 'boolean'
@@ -181,12 +202,13 @@ export function useReading(user, settings) {
         const sky = computeSky({ place: computeInput.place, timeZone: computeInput.timeZone });
         setLoading('signals');
         const signals = rankSignals(natal, sky);
+        const hashes = readingHashes({ natalChart: natal, currentSky: sky, signals });
         const journal = getJournal(user.birthHash);
-        const cacheMode = computeInput.aiMode;
+        const cacheMode = cacheModeFor(settings, hashes);
         setLoading('receipts');
         const cached = getCachedReading(user.birthHash, sky.localDateKey, cacheMode);
 
-        if (!runRequest.bypassCache && cached && cachedReadingIsCurrent(cached)) {
+        if (!runRequest.bypassCache && cached && cachedReadingIsCurrent(cached, hashes)) {
           if (!alive) return;
           const interpretationStatus = cached.isFallback
             ? {

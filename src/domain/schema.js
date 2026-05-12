@@ -1,4 +1,4 @@
-export const FRAMEWORK = 'IAU_TRUE_SKY_FIRST_CROSSING';
+export const FRAMEWORK = 'IAU_ACTUAL_SKY_TOPOCENTRIC';
 export const HOUSE_SYSTEM = 'Placidus';
 export const NODE_TYPE = 'True';
 

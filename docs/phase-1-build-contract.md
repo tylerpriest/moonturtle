@@ -54,7 +54,7 @@ The app should work for a real practitioner with one device, no account, no paym
 
 - Any birth date/time/place with known or manually entered coordinates.
 - Current sky for the user's current/manual location.
-- True-sky sidereal signs via MoonTurtle's IAU first-crossing convention.
+- True-sky sidereal signs via MoonTurtle's actual-sky IAU convention, with the documented ecliptic fallback for nodes, angles, and houses.
 - Placidus houses if birth time is known.
 - Unknown birth time fallback that avoids Ascendant, Midheaven, and houses.
 - Daily reading with exact schema from `src/reading/prompt/04-schema.md`.
@@ -88,7 +88,7 @@ The app should work for a real practitioner with one device, no account, no paym
 
 - Prefer open, auditable packages with permissive licenses.
 - Re-check `docs/open-source-astrology-tools.md` before adding astrology math packages.
-- Do not use package zodiac labels as MoonTurtle true-sky sign truth unless they come from our IAU boundary table.
+- Do not use package zodiac labels as MoonTurtle true-sky sign truth. Use actual-sky IAU lookup for supported physical bodies and MoonTurtle's fallback table for ecliptic points.
 - Do not add state management, routers, CSS frameworks, or date libraries until the current code genuinely hurts without them.
 - If a better option emerges, document the tradeoff before adopting it.
 

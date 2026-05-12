@@ -45,7 +45,7 @@ export function NatalScreen({ state, user }) {
       <div style={{height:6}}/>
       <h1 className="h-display" style={{fontSize:26}}>Your natal pattern.</h1>
       <p className="body-prose" style={{fontSize:15, marginTop:8}}>
-        The baseline. What the sky was doing the moment you began.
+        The baseline. The sky you entered through, calculated from where and when you began.
       </p>
 
       <div style={{height:22}}/>

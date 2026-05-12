@@ -4,13 +4,13 @@ Survey date: 11 May 2026. Re-check before adding a dependency; this space is act
 
 ## Current recommendation
 
-Use `astronomy-engine` as the v1 sky engine, keep MoonTurtle's true-sky zodiac boundary table custom, and evaluate `celestine` for houses/aspects/transits before falling back to `circular-natal-horoscope-js`.
+Use `astronomy-engine` as the v1 sky engine for actual observer-sky body positions and IAU constellation lookup, keep MoonTurtle's ecliptic boundary fallback custom, and evaluate `celestine` for houses/aspects/transits before falling back to `circular-natal-horoscope-js`.
 
 Why this mix:
 
 - MoonTurtle needs real astronomy first: Moon phase, illumination, rise/set, current sky, ecliptic positions, and IAU constellation lookup.
 - MoonTurtle also needs astrology-shaped math: Placidus houses, angles, aspects, retrogrades, transits, and a deterministic loudness ranking.
-- No package found during this survey provides MoonTurtle's exact true-sky zodiac convention. The IAU boundary projection remains our owned layer.
+- No package found during this survey provides MoonTurtle's exact true-sky convention across physical bodies and ecliptic points. The IAU constellation lookup plus ecliptic fallback remains our owned layer.
 
 ## Recommended stack
 
@@ -31,19 +31,19 @@ Why: MIT, JavaScript/browser support, no external dependencies, compact enough f
 
 Risk: it is astronomy-first, not astrology-first. Houses, aspects, and interpretive chart conveniences must be built or supplied separately.
 
-### MoonTurtle IAU boundary table
+### MoonTurtle ecliptic boundary fallback
 
 Source: `src/domain/zodiac-boundaries.md`
 
-Role: true-sky sign assignment.
+Role: fallback sign assignment for ecliptic points.
 
 Use for:
 
-- mapping ecliptic longitudes to 13 visible zodiac constellations
-- documenting MoonTurtle's first-crossing convention
-- keeping the zodiac reproducible and non-proprietary
+- mapping nodes, angles, house cusps, and unsupported objects to 13 visible zodiac constellations
+- documenting MoonTurtle's ecliptic first-crossing fallback
+- keeping mathematical point labels reproducible and non-proprietary
 
-Why: the master prompt asks for true-sky visible constellations, not copied MTZ data. A build-time table from open IAU boundaries is explicit and testable.
+Why: the master prompt asks for true-sky visible constellations, not copied MTZ data. Physical bodies can be checked directly against IAU regions; ecliptic-only points still need an explicit and testable fallback.
 
 Risk: first-crossing is a convention. If practitioners strongly prefer a different convention, swap the boundary builder and rebuild the table.
 
@@ -61,7 +61,7 @@ Use for, after verification:
 
 Why it is a better option than the original house-library plan: MIT, TypeScript, zero runtime dependencies, active as of early 2026, and built around reusable modules instead of a monolithic chart object.
 
-Hard boundary: do not use its tropical zodiac labels as MoonTurtle sign truth. Feed its longitudes/cusps into our own IAU sign lookup.
+Hard boundary: do not use its tropical zodiac labels as MoonTurtle sign truth. Use `astronomy-engine` actual-sky lookup for supported physical bodies and MoonTurtle's fallback table for ecliptic points.
 
 Risk: young package. Require seed-user regression and a cross-check against a known chart engine before adopting.
 

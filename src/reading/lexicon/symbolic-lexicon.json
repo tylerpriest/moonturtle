@@ -5,7 +5,7 @@
   "systems": {
     "true-sky-sidereal-astronomy": {
       "label": "True-sky sidereal astronomy",
-      "role": "Placement framework only: IAU constellation boundaries, unequal signs, and Ophiuchus. This decides where a body is, not what it means."
+      "role": "Placement framework only: observer-sky body positions, IAU constellation containment, unequal regions, and Ophiuchus. This decides where a body appears, not what it means."
     },
     "modern-western-astrology": {
       "label": "Modern Western astrology",

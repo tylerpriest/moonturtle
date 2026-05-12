@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { normalizeReadingShape, validateReadingProse } from '../src/reading/validation.js';
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_MODEL_TIMEOUT_MS = 65000;
@@ -43,7 +44,7 @@ const READING_SCHEMA = {
     },
     activations: {
       type: 'array',
-      minItems: 3,
+      minItems: 5,
       maxItems: 5,
       items: {
         type: 'object',
@@ -58,8 +59,8 @@ const READING_SCHEMA = {
         },
       },
     },
-    notice: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 4 },
-    avoid: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 4 },
+    notice: { type: 'array', items: { type: 'string' }, minItems: 4, maxItems: 4 },
+    avoid: { type: 'array', items: { type: 'string' }, minItems: 4, maxItems: 4 },
   },
 };
 
@@ -113,8 +114,8 @@ Voice rules:
 - Avoid generic positivity, fear, doom, and mechanical planet lists.
 
 Content rules:
-- Use the provided true-sky sidereal / IAU-boundary data as receipts.
-- Choose only the loudest one to three signals, then return 3 to 5 activation cards that explore those signals without padding.
+- Use the provided true-sky sidereal / actual-sky IAU constellation data as receipts.
+- Choose only the loudest one to three signals, then return exactly 5 activation cards that explore those signals without padding.
 - Preserve agency: no fatalism, no prediction language, no commands disguised as cosmic certainty.
 - Do not mention birth date, birth time, exact coordinates, providers, APIs, or implementation details.
 - Match this exact JSON shape: headline, body, lunarAxis, activations, notice, avoid.
@@ -131,8 +132,18 @@ ${JSON.stringify(payload, null, 2)}`;
 }
 
 function normaliseReading(reading, source, providerMeta) {
+  const normalized = normalizeReadingShape(reading);
+  const validation = validateReadingProse(normalized);
+  if (!validation.ok) {
+    const error = new Error(`Reading validation failed: ${validation.errors.join(' ')}`);
+    error.code = validation.errors.some((item) => item.includes('Forbidden phrase'))
+      ? 'voice_validation_failed'
+      : 'reading_schema_invalid';
+    error.detail = validation.errors;
+    throw error;
+  }
   return {
-    ...reading,
+    ...validation.normalized,
     source,
     providerMeta,
     generatedAt: new Date().toISOString(),
@@ -474,6 +485,15 @@ async function generateReading(payload, { apiKey, apiProvider = 'openai' } = {})
       }
       return await runAnthropicApi(prompt, apiKey);
     } catch (error) {
+      if (error.code === 'voice_validation_failed' || error.code === 'reading_schema_invalid') {
+        return {
+          error: {
+            code: error.code,
+            message: error.message,
+            detail: error.detail,
+          },
+        };
+      }
       return {
         error: {
           code: 'api_key_provider_error',
@@ -496,6 +516,15 @@ async function generateReading(payload, { apiKey, apiProvider = 'openai' } = {})
     try {
       return await runner(prompt);
     } catch (error) {
+      if (error.code === 'voice_validation_failed' || error.code === 'reading_schema_invalid') {
+        return {
+          error: {
+            code: error.code,
+            message: error.message,
+            detail: error.detail,
+          },
+        };
+      }
       const timeout = isTimeoutError(error);
       const elapsed = Date.now() - startedAt;
       errors.push(`${name}: ${timeout ? `timed out after ${Math.round(modelTimeoutMs() / 1000)}s` : error.message} (${Math.round(elapsed / 1000)}s elapsed)`);

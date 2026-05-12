@@ -30,9 +30,9 @@ export const ali = {
   expectedPlacements: {
     bodies: [
       { body: "Sun",        sign: "Gemini",      house: 6,  sym: "☉" },
-      { body: "Moon",       sign: "Scorpio",     house: 11, sym: "☽" },
+      { body: "Moon",       sign: "Ophiuchus",   house: 11, sym: "☽" },
       { body: "Mercury",    sign: "Taurus",      house: 6,  sym: "☿" },
-      { body: "Venus",      sign: "Leo",         house: 8,  sym: "♀" },
+      { body: "Venus",      sign: "Cancer",      house: 8,  sym: "♀" },
       { body: "Mars",       sign: "Taurus",      house: 6,  sym: "♂" },
       { body: "Jupiter",    sign: "Scorpio",     house: 11, sym: "♃", retrograde: true, chartRuler: true },
       { body: "Saturn",     sign: "Virgo",       house: 10, sym: "♄" },
@@ -40,7 +40,7 @@ export const ali = {
       { body: "Neptune",    sign: "Sagittarius", house: 12, sym: "♆" },
       { body: "Pluto",      sign: "Virgo",       house: 10, sym: "♇" },
       { body: "North Node", sign: "Taurus",      house: 6,  sym: "☊" },
-      { body: "South Node", sign: "Scorpio",     house: 12, sym: "☋" },
+      { body: "South Node", sign: "Ophiuchus",   house: 12, sym: "☋" },
     ],
     angles: [
       { angle: "Ascendant",  sign: "Sagittarius" },

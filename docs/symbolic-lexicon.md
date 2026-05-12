@@ -17,7 +17,7 @@ This lexicon is not copied from one book, author, or school. It is a MoonTurtle-
 
 ## Systems Named In The Lexicon
 
-- **True-sky sidereal astronomy:** placement framework only. It decides where a body is by IAU constellation boundaries projected onto the ecliptic. It does not decide meaning.
+- **True-sky sidereal astronomy:** placement framework only. Physical bodies are labelled by observer-sky IAU constellation containment; ecliptic points use the documented boundary fallback. This decides where a body or point is, not what it means.
 - **Modern Western astrology:** psychological sign, planet, house, and aspect meanings.
 - **Traditional Western astrology:** elements, modalities, rulerships, angularity, and inherited house topics.
 - **Lunar cycle practice:** waxing, full, waning, and dark Moon timing language.

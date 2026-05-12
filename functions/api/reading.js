@@ -1,3 +1,5 @@
+import { normalizeReadingShape, validateReadingProse } from '../../src/reading/validation.js';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -22,21 +24,57 @@ function extractJson(text) {
   return JSON.parse(match[0]);
 }
 
-function promptFor(payload) {
+function promptFor(payload, retryNote = '') {
   return `Write one MoonTurtle daily reading as strict JSON only.
 
 Rules:
-- Use the provided true-sky sidereal / IAU-boundary data as receipts.
+- Use the provided true-sky sidereal / actual-sky IAU constellation data as receipts.
 - Choose only the loudest one to three signals.
+- Return exactly five activations, four notice items, and four avoid items.
 - Preserve agency: no fatalism, no predictions, no commands disguised as cosmic certainty.
 - Use warm, grounded, poetic language.
+- Do not use forbidden filler: energy, vibes, alignment, manifestation, the universe, abundance.
 - Do not mention birth date, birth time, or exact coordinates.
 
 Required JSON keys:
 headline, body, lunarAxis, activations, notice, avoid.
+${retryNote ? `\nPrevious response failed validation:\n${retryNote}\n` : ''}
 
 Input:
 ${JSON.stringify(payload, null, 2)}`;
+}
+
+async function requestReading({ apiKey, env, payload, retryNote }) {
+  const providerResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: env.MT_MODEL || 'claude-opus-4-7',
+      max_tokens: 1400,
+      temperature: 0.7,
+      messages: [
+        {
+          role: 'user',
+          content: promptFor(payload, retryNote),
+        },
+      ],
+    }),
+  });
+
+  if (!providerResponse.ok) {
+    const error = new Error(`Provider returned ${providerResponse.status}.`);
+    error.code = 'provider_error';
+    error.status = providerResponse.status;
+    throw error;
+  }
+
+  const data = await providerResponse.json();
+  const text = data.content?.map((part) => part.text ?? '').join('\n') ?? '';
+  return normalizeReadingShape(extractJson(text));
 }
 
 export async function onRequestOptions() {
@@ -62,48 +100,39 @@ export async function onRequestPost({ request, env }) {
     }, 503);
   }
 
-  const providerResponse = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: env.MT_MODEL || 'claude-opus-4-7',
-      max_tokens: 1400,
-      temperature: 0.7,
-      messages: [
-        {
-          role: 'user',
-          content: promptFor(payload),
-        },
-      ],
-    }),
-  });
+  let retryNote = '';
+  try {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const reading = await requestReading({ apiKey, env, payload, retryNote });
+      const validation = validateReadingProse(reading);
+      if (validation.ok) {
+        return json({
+          ...validation.normalized,
+          source: request.headers.get('X-User-Provider-Key') ? 'user-anthropic-key' : 'anthropic-provider',
+          providerMeta: {
+            provider: 'anthropic',
+            providerSurface: request.headers.get('X-User-Provider-Key') ? 'Anthropic API' : 'Hosted Claude API',
+            modelId: env.MT_MODEL || 'claude-opus-4-7',
+            modelLabel: 'Claude',
+            reasoningEffort: null,
+          },
+          generatedAt: new Date().toISOString(),
+        });
+      }
+      retryNote = validation.errors.slice(0, 8).join('\n');
+    }
 
-  if (!providerResponse.ok) {
     return json({
       error: {
-        code: 'provider_error',
-        message: `Provider returned ${providerResponse.status}.`,
+        code: retryNote.includes('Forbidden phrase') ? 'voice_validation_failed' : 'reading_schema_invalid',
+        message: 'Provider response failed MoonTurtle reading validation.',
+        detail: retryNote ? retryNote.split('\n') : [],
       },
     }, 502);
-  }
-
-  const data = await providerResponse.json();
-  const text = data.content?.map((part) => part.text ?? '').join('\n') ?? '';
-
-  try {
-    return json({
-      ...extractJson(text),
-      source: request.headers.get('X-User-Provider-Key') ? 'user-anthropic-key' : 'anthropic-provider',
-      generatedAt: new Date().toISOString(),
-    });
   } catch (error) {
     return json({
       error: {
-        code: 'provider_parse_error',
+        code: error.code ?? 'provider_parse_error',
         message: error.message,
       },
     }, 502);

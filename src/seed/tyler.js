@@ -85,7 +85,7 @@ export const MT_DATA = {
   },
   notice: [
     "The thread that keeps reappearing in different conversations.",
-    "Where your daily routine is out of alignment with what you actually believe.",
+    "Where your daily routine no longer matches what you actually believe.",
     "Ideas that want to be named, mapped, or written down.",
     "A friendship or community that’s asking to evolve into something more useful.",
   ],

@@ -47,7 +47,7 @@ Do not duplicate these in your output. The user already sees them from the deter
 
 These influence the tone of `primary.body` and `activations` but do not appear as separate fields:
 
-- **Part 2** (loudness rating) — affects energy of the prose. Quiet day → contemplative. Strong day → activated.
+- **Part 2** (loudness rating) — affects intensity of the prose. Quiet day → contemplative. Strong day → activated.
 - **Part 10** (current Sun) — its themes thread through `primary.body` and may color individual activations.
 - **Part 14** (elemental forecast) — used for image/metaphor selection; never named explicitly.
 - **Part 15** (body / nervous system) — informs the practical-action thread in `notice` and the body-shadow thread in `avoid`.

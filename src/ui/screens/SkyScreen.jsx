@@ -92,7 +92,7 @@ export function SkyScreen({ state }) {
             <div>
               <div className="eyebrow">Calculated</div>
               <div style={{fontFamily:'var(--serif)', fontSize:14, color:'var(--ink-soft)', lineHeight:1.35}}>
-                True-sky sidereal · IAU boundaries · {sky.localDate}, {sky.localTime}
+                Observer sky · IAU constellation regions · {sky.localDate}, {sky.localTime}
               </div>
               <div className="meta" style={{marginTop:2}}>{sky.place.name}</div>
             </div>
