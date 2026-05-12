@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { getArchivedReading } from '../../reading/cache.js';
 import { MoonGlyph } from '../components/Primitives.jsx';
 
 function ribbonFromJournal(journal) {
@@ -32,10 +34,189 @@ function modeBadge(entry) {
   return `${entry.modeLabel ?? 'Quick glance'} · ${entry.modelLabel ?? 'GPT-5.5'}`;
 }
 
+function engineLabel(entry, reading) {
+  return reading?.engineLabel ?? entry?.engineLabel ?? entry?.sourceLabel ?? 'Reading engine';
+}
+
+function DetailList({ title, items = [], color }) {
+  if (!items.length) return null;
+  return (
+    <div className="card" style={{borderTop:`2px solid ${color}`}}>
+      <div className="section-label" style={{color}}>{title}</div>
+      <ul style={{listStyle:'none', display:'flex', flexDirection:'column', gap:10}}>
+        {items.map((item, index) => (
+          <li key={`${title}-${index}`} style={{display:'flex', gap:10, alignItems:'flex-start'}}>
+            <span style={{
+              flexShrink:0,
+              marginTop:7,
+              width:6,
+              height:6,
+              borderRadius:'50%',
+              background:color,
+              display:'block',
+            }}/>
+            <span className="body-prose" style={{fontSize:15}}>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function DetailActivation({ activation, index }) {
+  return (
+    <div className="card" style={{padding:'16px 18px'}}>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12}}>
+        <div className="h-card">{activation.title}</div>
+        <div className="meta">{String(index).padStart(2, '0')}</div>
+      </div>
+      <div className="meta" style={{marginTop:4, marginBottom:9, fontStyle:'italic', fontFamily:'var(--serif)', fontSize:13}}>
+        Activates {activation.activates}
+      </div>
+      <p className="body-prose" style={{fontSize:15}}>{activation.theme}</p>
+      {activation.question && (
+        <div style={{fontFamily:'var(--serif)', fontStyle:'italic', fontSize:15, color:'var(--ink)', borderLeft:'2px solid var(--ochre)', paddingLeft:12, marginTop:10}}>
+          "{activation.question}"
+        </div>
+      )}
+      {activation.insight && (
+        <div className="meta" style={{marginTop:10, lineHeight:1.45, letterSpacing:'0.03em'}}>
+          {activation.insight}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReadingDetail({ selected, onBack }) {
+  const { entry, reading } = selected;
+  const unavailable = !reading;
+  return (
+    <div style={{padding:'24px 26px 36px'}}>
+      <button type="button" className="journal-back-button" onClick={onBack}>
+        Back to journal
+      </button>
+
+      <div style={{height:16}}/>
+      <div className="eyebrow">{entry.localDate ?? entry.dateKey}</div>
+      <div style={{height:6}}/>
+      <h1 className="h-display" style={{fontSize:26}}>{entry.headline ?? reading?.headline ?? 'Past reading'}</h1>
+      <div style={{display:'flex', gap:7, flexWrap:'wrap', marginTop:12}}>
+        <span className="chip" style={{
+          color: entry.isFallback ? 'var(--terracotta)' : 'var(--ink-soft)',
+          borderColor: entry.isFallback ? 'rgba(176,74,38,0.45)' : 'var(--hairline-strong)',
+        }}>
+          {modeBadge(entry)}
+        </span>
+        {entry.preferred && <span className="chip">Preferred</span>}
+      </div>
+
+      <div style={{height:18}}/>
+      <div className={`card warm ${entry.isFallback ? 'is-fallback' : ''}`} style={{padding:'22px 20px'}}>
+        <div style={{display:'flex', alignItems:'center', gap:13, marginBottom:14}}>
+          <MoonGlyph size={38} illumPct={entry.illumination} waxing={entry.waxing}/>
+          <div>
+            <div className="eyebrow">{entry.phase} · {entry.moonSign}</div>
+            <div className="meta" style={{marginTop:2}}>{entry.illumination}% lit</div>
+          </div>
+        </div>
+
+        {unavailable ? (
+          <>
+            <div className="section-label">Snapshot unavailable</div>
+            <p className="body-prose">
+              This older journal card was saved before MoonTurtle began archiving full reading snapshots. New readings will open here with the complete text.
+            </p>
+          </>
+        ) : (
+          <>
+            {reading.isFallback && (
+              <div className="fallback-banner" style={{marginTop:0}}>
+                <div className="eyebrow" style={{color:'var(--terracotta)'}}>Fallback shown</div>
+                <p className="body-prose" style={{fontSize:15, marginTop:5}}>
+                  This reading is a rough local interpretation from calculated receipts.
+                </p>
+              </div>
+            )}
+            <p className="body-prose">{reading.body}</p>
+            <div style={{marginTop:14, paddingTop:12, borderTop:'1px solid var(--hairline)'}}>
+              <div className="meta">Engine: {engineLabel(entry, reading)}</div>
+              {reading.aiAttempt?.message && (
+                <div className="meta" style={{marginTop:5, lineHeight:1.4}}>
+                  {reading.aiAttempt.message}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {!unavailable && reading.lunarAxis && (
+        <>
+          <div style={{height:18}}/>
+          <div className="section-label">Moon axis</div>
+          <div className="card">
+            <div style={{display:'flex', justifyContent:'space-between', gap:16, marginBottom:12}}>
+              <div>
+                <div className="eyebrow">Natal Moon</div>
+                <div className="h-card">{reading.lunarAxis.natal.sign}</div>
+                <div className="meta">{reading.lunarAxis.natal.house}</div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div className="eyebrow">Sky Moon</div>
+                <div className="h-card">{reading.lunarAxis.current.sign}</div>
+                <div className="meta">now</div>
+              </div>
+            </div>
+            <p className="body-prose" style={{fontSize:15, fontStyle:'italic'}}>
+              {reading.lunarAxis.reading}
+            </p>
+          </div>
+        </>
+      )}
+
+      {!unavailable && reading.activations?.length > 0 && (
+        <>
+          <div style={{height:18}}/>
+          <div className="section-label">Activations</div>
+          <div style={{display:'flex', flexDirection:'column', gap:12}}>
+            {reading.activations.map((activation, index) => (
+              <DetailActivation key={`${activation.title}-${index}`} activation={activation} index={index + 1}/>
+            ))}
+          </div>
+        </>
+      )}
+
+      {!unavailable && (
+        <>
+          <div style={{height:18}}/>
+          <div style={{display:'flex', flexDirection:'column', gap:12}}>
+            <DetailList title="What to Notice" color="var(--moss)" items={reading.notice}/>
+            <DetailList title="What to Avoid Overdoing" color="var(--plum)" items={reading.avoid}/>
+          </div>
+        </>
+      )}
+
+      <div style={{height:20}}/>
+    </div>
+  );
+}
+
 export function JournalScreen({ state }) {
+  const [selected, setSelected] = useState(null);
   const journal = state?.journal ?? [];
   const ribbon = ribbonFromJournal(journal);
   const groups = groupJournal(journal);
+
+  function openEntry(entry) {
+    const archived = getArchivedReading(entry.birthHash, entry.readingId);
+    const current = state?.reading?.readingId === entry.readingId ? state.reading : null;
+    setSelected({ entry, reading: archived ?? current });
+  }
+
+  if (selected) {
+    return <ReadingDetail selected={selected} onBack={() => setSelected(null)}/>;
+  }
 
   return (
     <div style={{padding:'24px 26px 36px'}}>
@@ -89,8 +270,11 @@ export function JournalScreen({ state }) {
               <div className="meta" style={{marginBottom:10}}>Moon in {group.moonSign} · {group.illumination}% lit</div>
               <div style={{display:'flex', flexDirection:'column', gap:10}}>
                 {group.entries.map((entry, variantIndex) => (
-                  <div
+                  <button
+                    type="button"
                     key={entry.readingId ?? `${entry.dateKey}-${variantIndex}`}
+                    className="journal-entry-button"
+                    onClick={() => openEntry(entry)}
                     style={{
                       paddingTop: variantIndex === 0 ? 0 : 10,
                       borderTop: variantIndex === 0 ? 'none' : '1px solid var(--hairline)',
@@ -110,10 +294,15 @@ export function JournalScreen({ state }) {
                     <div style={{fontFamily:'var(--serif)', fontSize:16, fontStyle:'italic', color:'var(--ink)', marginBottom:3}}>
                       {entry.headline}
                     </div>
-                    <div className="meta" style={{lineHeight:1.4, letterSpacing:'0.03em'}}>
-                      {entry.engineLabel ?? entry.sourceLabel ?? 'Reading engine'}
+                    <div style={{display:'flex', justifyContent:'space-between', gap:10, alignItems:'center'}}>
+                      <div className="meta" style={{lineHeight:1.4, letterSpacing:'0.03em'}}>
+                        {entry.engineLabel ?? entry.sourceLabel ?? 'Reading engine'}
+                      </div>
+                      <div className="meta" style={{color:'var(--terracotta)', whiteSpace:'nowrap'}}>
+                        Open
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

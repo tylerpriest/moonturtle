@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getJournal } from './cache.js';
-import { appendJournalEntry, getCachedReading, setCachedReading } from './cache.js';
+import { appendJournalEntry, getCachedReading, setArchivedReading, setCachedReading } from './cache.js';
 import { aiMode, engineForSettings, formatEngineLabel, generateReading } from './generate.js';
 import { SOURCE_METADATA_VERSION } from './lexicon/index.js';
 
@@ -42,6 +42,7 @@ function buildJournalEntry(user, sky, reading) {
     fallbackReason: reading.fallbackReason,
     aiAttempt: reading.aiAttempt,
     generatedAt: reading.generatedAt,
+    archived: true,
     birthHash: user.birthHash,
   };
 }
@@ -200,10 +201,13 @@ export function useReading(user, settings) {
             signals,
             reading: cached,
             fromCache: true,
-            journal,
+            journal: journal.map((entry) => (
+              entry.readingId === cached.readingId ? { ...entry, archived: true } : entry
+            )),
             loading: null,
             interpretationStatus,
           });
+          setArchivedReading(user.birthHash, cached);
           return;
         }
 
@@ -213,6 +217,7 @@ export function useReading(user, settings) {
         if (!reading.isFallback || cacheMode === 'local') {
           setCachedReading(user.birthHash, sky.localDateKey, reading, cacheMode);
         }
+        setArchivedReading(user.birthHash, reading);
         setLoading('saving');
         const nextJournal = appendJournalEntry(user.birthHash, buildJournalEntry(user, sky, reading));
 
