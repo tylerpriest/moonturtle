@@ -302,7 +302,7 @@ export function JournalScreen({ state }) {
       <div style={{height:6}}/>
       <h1 className="h-display" style={{fontSize:26}}>The pattern of your days.</h1>
       <p className="body-prose" style={{fontSize:15, marginTop:8}}>
-        Past readings, held lightly. No streaks. No score.
+        Past readings, held lightly. No streaks. No pressure.
       </p>
 
       <div style={{height:22}}/>

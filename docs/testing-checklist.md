@@ -6,6 +6,7 @@ Run this before calling Phase 1 done.
 
 ```bash
 npm install
+npm run check:release
 npm run build
 npm audit --audit-level=moderate
 ```
@@ -31,14 +32,15 @@ Tyler:
 Ali:
 
 - Sun Gemini
-- Moon Scorpio
+- Moon Ophiuchus under MoonTurtle's actual-sky IAU convention
 - Ascendant Sagittarius, if birth time known
 - Jupiter marked as chart ruler if Sagittarius rising
 
 Boundary:
 
-- generated zodiac boundary table contains 13 constellations including Ophiuchus
+- generated ecliptic fallback table contains 13 constellations including Ophiuchus
 - Sun ingress dates broadly match public true-sky date tables
+- `npm run check:astronomy` passes
 
 ## Current sky sanity
 
@@ -46,7 +48,7 @@ For one known timestamp/location:
 
 - Moon illumination within about 0.5 percentage points of public sky source
 - moonrise/moonset within about 2 minutes
-- Sun and Moon true-sky signs plausible under the boundary table
+- Sun and Moon true-sky signs plausible under actual observer-sky IAU lookup
 - local date displays with day and month clearly
 
 ## Signal ranking
@@ -70,6 +72,7 @@ Generated prose object:
 - has exactly 4 notice items
 - has exactly 4 avoid items
 - contains plain text only
+- `npm run check:reading` passes
 
 ## Voice
 

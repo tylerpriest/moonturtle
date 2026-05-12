@@ -15,7 +15,7 @@ Status key:
 - `[x]` Add JTBD and user stories.
 - `[x]` Add backlog and docs index.
 - `[ ]` Refresh stale phase-history language in `README.md`, `GETTING_STARTED.md`, and `docs/plan.md`.
-- `[ ]` Add a short decision log for true-sky boundary convention, provider strategy, and local-first privacy.
+- `[x]` Add a short decision log for true-sky boundary convention, provider strategy, and local-first privacy.
 - `[ ]` Add release plan once the first practitioner cohort is known.
 
 Done when:
@@ -27,10 +27,10 @@ Done when:
 
 - `[~]` Verify `computeNatal(user)` against Tyler and Ali fixtures.
 - `[~]` Verify `computeSky({ place, timeZone })` against public Moon phase and rise/set sources for one fixed timestamp.
-- `[~]` Verify IAU zodiac boundary table includes all 13 signs including Ophiuchus.
-- `[ ]` Add repeatable tests or scripts for seed-user astronomy regression.
+- `[~]` Verify IAU ecliptic fallback table includes all 13 signs including Ophiuchus.
+- `[x]` Add repeatable tests or scripts for seed-user astronomy regression.
 - `[ ]` Document tolerance thresholds for longitude, phase, and rise/set comparisons.
-- `[ ]` Confirm no tropical labels leak into domain or UI output.
+- `[x]` Confirm no tropical labels leak into domain or UI output.
 
 Done when:
 
@@ -70,8 +70,8 @@ Done when:
 - `[~]` Verify cache keys distinguish birth hash, local date, and AI mode.
 - `[~]` Verify local fallback mode is honest and useful.
 - `[ ]` Add provider failure tests for invalid key, network error, malformed JSON, and schema count mismatch.
-- `[ ]` Add forbidden-word and exemplar-bleed checks.
-- `[ ]` Confirm cache invalidation when source metadata version changes.
+- `[x]` Add forbidden-word and exemplar-bleed checks.
+- `[x]` Confirm cache invalidation when source metadata version changes.
 
 Done when:
 

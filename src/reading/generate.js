@@ -8,8 +8,15 @@ import {
   SOURCE_METADATA_VERSION,
   signEntry,
 } from './lexicon/index.js';
+import {
+  PROMPT_VERSION,
+  normalizeReadingShape,
+  readingHashes,
+  stableHash,
+  validateReadingProse,
+} from './validation.js';
 
-export const DAILY_PROMPT_VERSION = 'daily-v2-2026-05-12';
+export const DAILY_PROMPT_VERSION = PROMPT_VERSION;
 export const PROFILE_PROMPT_VERSION = 'profile-v1-2026-05-12';
 
 function ordinal(n) {
@@ -467,7 +474,7 @@ function localReading(input) {
   const { natalChart, currentSky, signals } = input;
   const activations = makeActivations(signals, currentSky);
   const body = makeBody(input);
-  return {
+  return normalizeReadingShape({
     schemaVersion: 2,
     promptVersion: DAILY_PROMPT_VERSION,
     source: 'local-symbolic-engine',
@@ -487,14 +494,18 @@ function localReading(input) {
     receipts: makeReceipts(currentSky, signals),
     notice: makeNotice(input),
     avoid: makeAvoid(signals),
-  };
+  });
 }
 
 function providerPayload({ natalChart, currentSky, signals }) {
+  const hashes = readingHashes({ natalChart, currentSky, signals });
   return {
     requestKind: 'daily',
     schemaVersion: 2,
     promptVersion: DAILY_PROMPT_VERSION,
+    chartHash: hashes.chartHash,
+    skyHash: hashes.skyHash,
+    signalsHash: hashes.signalsHash,
     framework: currentSky.framework,
     dateKey: currentSky.localDateKey,
     localDate: currentSky.localDate,
@@ -558,16 +569,6 @@ function fallbackSourceMetadata(reason = 'AI interpretation did not complete.') 
 function makeReadingId(dateKey) {
   const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   return `${dateKey}:${random}`;
-}
-
-function stableHash(value) {
-  const input = typeof value === 'string' ? value : JSON.stringify(value);
-  let hash = 2166136261;
-  for (let i = 0; i < input.length; i += 1) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36);
 }
 
 function readingContentSignature(reading) {
@@ -717,7 +718,7 @@ export function shouldAttemptProvider(settings = {}) {
   if (mode === 'local') return false;
   if (mode === 'codex' || mode === 'claude') return isLocalhost();
   if (mode === 'api-key') return Boolean(providerKey(settings));
-  const setting = import.meta.env.VITE_MOONTURTLE_USE_PROVIDER ?? 'auto';
+  const setting = import.meta.env?.VITE_MOONTURTLE_USE_PROVIDER ?? 'auto';
   if (setting === 'true') return true;
   if (setting === 'false' || setting === 'off') return false;
   return isLocalhost();
@@ -728,7 +729,7 @@ function providerTimeoutMs(mode) {
   // MoonTurtle can receive the bridge's structured failure reason instead of a
   // generic AbortError.
   const fallback = mode === 'api-key' ? 140000 : 155000;
-  const configured = Number(import.meta.env.VITE_MOONTURTLE_PROVIDER_TIMEOUT_MS ?? fallback);
+  const configured = Number(import.meta.env?.VITE_MOONTURTLE_PROVIDER_TIMEOUT_MS ?? fallback);
   return Number.isFinite(configured) && configured > 0 ? configured : fallback;
 }
 
@@ -752,28 +753,40 @@ function finalizeReading(reading, input, overrides = {}) {
   const isFallback = Boolean(overrides.isFallback);
   const mode = input.settings?.readingMode ?? 'quick-glance';
   const modeLabel = mode === 'full' ? 'Full reading' : 'Quick glance';
-  const contentSignature = reading.contentSignature ?? readingContentSignature(reading);
+  const normalized = normalizeReadingShape(reading);
+  const validation = validateReadingProse(normalized);
+  if (!validation.ok) {
+    throw new Error(`Reading validation failed: ${validation.errors.join(' ')}`);
+  }
+  const hashes = readingHashes(input);
+  const contentSignature = normalized.contentSignature ?? readingContentSignature(normalized);
   const isDeterministicLocal = isFallback || engine.provider === 'local';
   return {
-    ...reading,
-    readingId: reading.readingId ?? (
+    ...normalized,
+    schemaVersion: normalized.schemaVersion ?? 2,
+    readingId: normalized.readingId ?? (
       isDeterministicLocal
         ? makeDeterministicReadingId(dateKey, mode, contentSignature)
         : makeReadingId(dateKey)
     ),
     contentSignature,
     dateKey,
-    generatedAt: reading.generatedAt ?? new Date().toISOString(),
+    promptVersion: hashes.promptVersion,
+    chartHash: hashes.chartHash,
+    skyHash: hashes.skyHash,
+    signalsHash: hashes.signalsHash,
+    generatedAt: normalized.generatedAt ?? new Date().toISOString(),
     readingMode: mode,
     modeLabel,
     engine,
+    providerMeta: isFallback ? null : engine,
     engineLabel: isFallback ? 'Local deterministic fallback' : formatEngineLabel(engine),
     modelLabel: isFallback ? 'Local deterministic' : engine.modelLabel,
     isFallback,
     fallbackReason: overrides.fallbackReason ?? null,
     providerAttempted: overrides.providerAttempted ?? false,
     aiAttempt: overrides.aiAttempt ?? null,
-    sourceDetail: overrides.sourceDetail ?? reading.sourceDetail,
+    sourceDetail: overrides.sourceDetail ?? normalized.sourceDetail,
   };
 }
 
@@ -1324,19 +1337,23 @@ export async function generateReading(input) {
         detail: error.detail,
       });
     }
-    const remote = await response.json();
-    if (!remote?.headline || !remote?.body) {
+    const remote = normalizeReadingShape(await response.json());
+    const validation = validateReadingProse(remote);
+    if (!validation.ok) {
       return fallbackReading(local, input, {
         startedAt,
-        code: 'provider_invalid_schema',
-        message: 'AI response did not match the reading schema.',
+        code: validation.errors.some((error) => error.includes('Forbidden phrase'))
+          ? 'voice_validation_failed'
+          : 'reading_schema_invalid',
+        message: 'AI response did not match the MoonTurtle reading contract.',
+        detail: validation.errors,
       });
     }
-    const engine = engineFromRemote(remote, input.settings);
+    const engine = engineFromRemote(validation.normalized, input.settings);
     return finalizeReading({
       ...local,
-      ...remote,
-      source: remote.source ?? 'provider',
+      ...validation.normalized,
+      source: validation.normalized.source ?? 'provider',
       sourceDetail: providerSourceMetadata(mode),
     }, input, {
       isFallback: false,

@@ -1,10 +1,10 @@
-# True-sky sidereal zodiac boundaries — design note
+# Ecliptic boundary fallback — design note
 
-This file describes how MoonTurtle computes which sidereal zodiac sign a given ecliptic longitude falls in. The implementation lives in `src/domain/astronomy.js` (Phase 1) and the generated boundary table in `src/domain/zodiac-boundaries.json`.
+This file describes MoonTurtle's fallback for points that are ecliptic coordinates rather than physical bodies: lunar nodes, angles, house cusps, and unsupported objects. Physical bodies use actual observer-sky position and `Astronomy.Constellation(ra, dec)` first; the generated table in `src/domain/zodiac-boundaries.json` is used when the input is only an ecliptic longitude.
 
 ## The problem
 
-The master prompt requires **true-sky sidereal** — signs based on the actual visible constellations, with unequal lengths, including Ophiuchus (~Nov 29 – Dec 18). The mainstream approaches don't fit:
+The master prompt requires **true-sky sidereal** — signs based on actual visible constellations, with unequal lengths, including Ophiuchus. Physical planets and luminaries can be placed by their observer-sky direction. Nodes, angles, and house cusps are mathematical ecliptic points, so they still need a transparent zodiac boundary convention.
 
 - **Tropical**: rejected by the master prompt.
 - **Equal-sign sidereal (Lahiri, Krishnamurti, Fagan-Bradley)**: still uses 12 equal 30° divisions, just shifted by an ayanamsa. Master prompt explicitly says *"Do not silently switch to standard equal-sign sidereal astrology."*
@@ -14,7 +14,7 @@ The master prompt requires **true-sky sidereal** — signs based on the actual v
 
 The IAU constellation boundaries were defined in 1930 by Eugène Delporte under the International Astronomical Union. They are **public-domain**, well-documented, and already implemented in `astronomy-engine` via its `Astronomy.Constellation(ra, dec)` lookup function.
 
-We use them to compute, for each point on the ecliptic, which IAU constellation contains it. The 13 constellations the ecliptic crosses are exactly the true-sky zodiac (the standard 12 + Ophiuchus).
+For physical bodies, MoonTurtle computes the body's observer-sky position, then uses IAU constellation containment directly. For ecliptic points, we use this table to ask which IAU constellation the ecliptic line occupies at that longitude. The 13 constellations the ecliptic crosses are the standard 12 plus Ophiuchus.
 
 ### Algorithm
 
@@ -29,7 +29,7 @@ const IAU_TO_ZODIAC = {
   Sgr: "Sagittarius", Cap: "Capricorn", Aqr: "Aquarius", Psc: "Pisces",
 };
 
-function trueSkyConstellation(eclipticLongitudeDeg) {
+function eclipticFallbackConstellation(eclipticLongitudeDeg) {
   // Convert ecliptic (lat=0, lon) → equatorial (RA, Dec)
   const { ra, dec } = eclipticToEquatorial(eclipticLongitudeDeg, 0);
 
@@ -42,18 +42,18 @@ function trueSkyConstellation(eclipticLongitudeDeg) {
 
 ### Boundary table (built once at build time)
 
-For runtime efficiency we don't call the IAU lookup on every reading. Instead, we sample the ecliptic at 0.01° resolution at build time, find each constellation transition, and ship a small JSON lookup:
+For runtime efficiency and deterministic ecliptic-point labels, we sample the ecliptic at 0.01° resolution at build time, find each constellation transition, and ship a small JSON lookup:
 
 ```js
 // scripts/build-zodiac-boundaries.js — runs at npm build
-import { trueSkyConstellation } from "../src/domain/astronomy.js";
+import { eclipticFallbackConstellation } from "../src/domain/astronomy.js";
 import { writeFileSync } from "node:fs";
 
 const boundaries = [];
 let prev = null;
 
 for (let lon = 0; lon < 360; lon += 0.01) {
-  const sign = trueSkyConstellation(lon);
+  const sign = eclipticFallbackConstellation(lon);
   if (sign !== prev) {
     boundaries.push({ sign, startDeg: Number(lon.toFixed(2)) });
     prev = sign;
@@ -90,21 +90,21 @@ Then runtime lookup is binary search — O(log 13) — trivial.
 
 ## Boundary convention
 
-Where one IAU constellation polygon ends and the next begins, *on the ecliptic line*, there's a single point of transition. Our convention is **first-crossing**: a constellation owns ecliptic longitudes from the moment the ecliptic enters its IAU polygon, until the moment it leaves.
+Where one IAU constellation polygon ends and the next begins, *on the ecliptic line*, there is a single point of transition. The fallback convention is **first-crossing**: a constellation owns ecliptic longitudes from the moment the ecliptic enters its IAU polygon, until the moment it leaves.
 
 Alternative conventions (worth documenting in case we want to compare):
 
 - **Centroid-time**: ecliptic longitudes belong to the constellation the ecliptic spends most time in within some window. Smoother, but harder to define rigorously.
-- **MTZ midpoint**: take the IAU boundary intersection lines on either side and use their midpoint on the ecliptic. This is what Mastering the Zodiac does. Should produce values within ~0.5° of first-crossing in most cases.
+- **MTZ midpoint**: take the IAU boundary intersection lines on either side and use their midpoint on the ecliptic. This is what Mastering the Zodiac does for its astrology zodiac dates.
 
-We pick first-crossing because it's the simplest rigorous definition. Method screen UI text should disclose this: *"True-sky sidereal via IAU 1930 constellation boundaries, first-crossing convention on the ecliptic."*
+We keep first-crossing because it is the simplest rigorous fallback for ecliptic-only points. Method copy should disclose the split: physical bodies use observer-sky IAU containment; ecliptic points use the documented boundary fallback.
 
 ## Validation
 
 Two regression checks must pass before this is considered correct:
 
 ### 1. Sanity check against public true-sky date tables
-Compare the generated Sun ingress dates against at least one public true-sky sidereal date table. This is a broad sanity check only; MoonTurtle's shipped convention is the reproducible IAU first-crossing table generated in this repo, not copied third-party boundary data.
+Compare the generated Sun ingress dates against at least one public true-sky sidereal date table as a broad fallback sanity check. MoonTurtle's physical-body labels should still be verified through observer-sky IAU containment, not copied third-party boundary data.
 
 ### 2. Seed-user regression
 Run `computeNatal()` against the seed users in `docs/seed-users.md`:
@@ -117,5 +117,5 @@ All other body placements should match the seed-users tables within ±1°.
 ## What this doesn't try to do
 
 - **Precession correction across millennia.** astronomy-engine handles precession via standard IAU 2006 models. We assume the IAU boundaries (defined 1930, fixed) drift with respect to the stars over centuries; this is a known property of using fixed boundaries and is fine for daily reading purposes.
-- **Different boundary conventions.** First-crossing is our shipped default. If we ever want MTZ-midpoint or centroid-time, swap one function and rebuild the table.
+- **Different astrology boundary conventions.** First-crossing is our fallback default. If we ever want MTZ-midpoint or centroid-time for ecliptic points, swap one function and rebuild the table.
 - **Houses.** This file is signs only. Houses are computed separately. Evaluate `celestine` first for Placidus; use `circular-natal-horoscope-js` only as a fallback if verification fails.

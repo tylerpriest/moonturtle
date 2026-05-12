@@ -502,7 +502,7 @@ export function MethodScreen({ settings, state, onSettingsChange, onResetLocalDa
       <MethodSection
         num="03"
         title="Your current sky is calculated automatically."
-        body="Where and when you are now is handled by your device. The app reads the sky through IAU constellation boundaries projected onto the ecliptic, using unequal true-sky signs, not the calendar zodiac."
+        body="Where and when you are now is handled by your device. The app computes the body's observer-sky position, then checks which IAU constellation region contains it. Ecliptic points like nodes, angles, and houses use the documented boundary fallback."
       />
       <MethodSection
         num="04"

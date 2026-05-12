@@ -5,8 +5,36 @@ import { BODY_SYMBOLS, FRAMEWORK, HOUSE_SYSTEM, NODE_TYPE, TRADITIONAL_RULERS } 
 import { getOffsetHours, getZonedParts, zonedTimeToUtc } from '../io/timezone.js';
 
 const LUNATION_DAYS = 29.530588853;
+const AU_KM = 149597870.7;
 const NATAL_PLANETS = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto', 'Chiron'];
 const SKY_PLANETS = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+const ASTRONOMY_BODIES = {
+  Sun: Astronomy.Body.Sun,
+  Moon: Astronomy.Body.Moon,
+  Mercury: Astronomy.Body.Mercury,
+  Venus: Astronomy.Body.Venus,
+  Mars: Astronomy.Body.Mars,
+  Jupiter: Astronomy.Body.Jupiter,
+  Saturn: Astronomy.Body.Saturn,
+  Uranus: Astronomy.Body.Uranus,
+  Neptune: Astronomy.Body.Neptune,
+  Pluto: Astronomy.Body.Pluto,
+};
+const IAU_ZODIAC_SIGNS = {
+  Ari: 'Aries',
+  Tau: 'Taurus',
+  Gem: 'Gemini',
+  Cnc: 'Cancer',
+  Leo: 'Leo',
+  Vir: 'Virgo',
+  Lib: 'Libra',
+  Sco: 'Scorpio',
+  Oph: 'Ophiuchus',
+  Sgr: 'Sagittarius',
+  Cap: 'Capricorn',
+  Aqr: 'Aquarius',
+  Psc: 'Pisces',
+};
 
 export function normalizeDegrees(value) {
   return ((value % 360) + 360) % 360;
@@ -39,6 +67,44 @@ export function formatZodiacPosition(longitude) {
   return `${Math.floor(degree)}° ${trueSkySign(longitude)}`;
 }
 
+function round(value, places = 6) {
+  return Number(value.toFixed(places));
+}
+
+function observationFromBirth({ date, time, timeZone, place, timeKnown = true }) {
+  const [hour = 12, minute = 0] = timeKnown && time ? time.split(':').map(Number) : [12, 0];
+  const utcDate = zonedTimeToUtc({ date, time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`, timeZone });
+  return {
+    date: utcDate,
+    observer: new Astronomy.Observer(place.lat, place.lon, place.alt ?? 0),
+    place,
+  };
+}
+
+export function actualSkyPosition(bodyName, observation) {
+  const body = ASTRONOMY_BODIES[bodyName];
+  if (!body || !observation?.date || !observation?.observer) return null;
+
+  const equatorial = Astronomy.Equator(body, observation.date, observation.observer, false, true);
+  const ecliptic = Astronomy.Ecliptic(equatorial.vec);
+  const constellation = Astronomy.Constellation(equatorial.ra, equatorial.dec);
+  const sign = IAU_ZODIAC_SIGNS[constellation.symbol] ?? null;
+
+  return {
+    method: 'actual-sky-topocentric-iau',
+    origin: 'observer',
+    constellation: constellation.name,
+    constellationSymbol: constellation.symbol,
+    sign,
+    rightAscension: round(equatorial.ra),
+    declination: round(equatorial.dec),
+    longitude: round(normalizeDegrees(ecliptic.elon)),
+    latitude: round(ecliptic.elat),
+    distanceAu: round(equatorial.dist, 9),
+    distanceKm: Math.round(equatorial.dist * AU_KM),
+  };
+}
+
 function toCelestineBirth({ date, time, timeZone, place, timeKnown = true }) {
   const [year, month, day] = date.split('-').map(Number);
   const [hour = 12, minute = 0] = timeKnown && time ? time.split(':').map(Number) : [12, 0];
@@ -68,49 +134,78 @@ function safeCalculateChart(input) {
   });
 }
 
-function mapPlanet(planet, houseAllowed = true) {
+function positionReceipt({ method, longitude, latitude = null }) {
+  return {
+    method,
+    longitude: round(normalizeDegrees(longitude)),
+    latitude: latitude == null ? null : round(latitude),
+  };
+}
+
+function mapPlanet(planet, houseAllowed = true, observation = null) {
+  const skyPosition = actualSkyPosition(planet.name, observation);
+  const longitude = skyPosition?.longitude ?? normalizeDegrees(planet.longitude);
+  const latitude = skyPosition?.latitude ?? planet.latitude ?? 0;
+  const sign = skyPosition?.sign ?? trueSkySign(longitude);
   return {
     body: planet.name,
-    sign: trueSkySign(planet.longitude),
-    longitude: normalizeDegrees(planet.longitude),
-    latitude: planet.latitude ?? 0,
-    degree: Number(signDegree(planet.longitude).toFixed(2)),
+    sign,
+    longitude,
+    latitude,
+    degree: Number(signDegree(longitude).toFixed(2)),
     house: houseAllowed ? planet.house ?? null : null,
     retrograde: Boolean(planet.isRetrograde),
     speed: planet.longitudeSpeed ?? null,
     sym: BODY_SYMBOLS[planet.name] ?? '•',
+    constellation: skyPosition?.constellation ?? sign,
+    signMethod: skyPosition?.sign ? 'actual-sky-topocentric-iau' : 'ecliptic-boundary-fallback',
+    position: skyPosition ?? positionReceipt({
+      method: 'ecliptic-boundary-fallback',
+      longitude,
+      latitude,
+    }),
   };
 }
 
 function mapNode(node, houseAllowed = true) {
+  const longitude = normalizeDegrees(node.longitude);
   return {
     body: node.name,
-    sign: trueSkySign(node.longitude),
-    longitude: normalizeDegrees(node.longitude),
-    degree: Number(signDegree(node.longitude).toFixed(2)),
+    sign: trueSkySign(longitude),
+    longitude,
+    degree: Number(signDegree(longitude).toFixed(2)),
     house: houseAllowed ? node.house ?? null : null,
     retrograde: true,
     speed: null,
     sym: BODY_SYMBOLS[node.name] ?? '•',
+    constellation: null,
+    signMethod: 'ecliptic-point-boundary',
+    position: positionReceipt({
+      method: 'ecliptic-point-boundary',
+      longitude,
+    }),
   };
 }
 
 function mapAngle(name, angle) {
+  const longitude = normalizeDegrees(angle.longitude);
   return {
     angle: name,
-    sign: trueSkySign(angle.longitude),
-    longitude: normalizeDegrees(angle.longitude),
-    degree: Number(signDegree(angle.longitude).toFixed(2)),
+    sign: trueSkySign(longitude),
+    longitude,
+    degree: Number(signDegree(longitude).toFixed(2)),
+    signMethod: 'ecliptic-horizon-point-boundary',
   };
 }
 
 export function computeNatal(user) {
   const birth = user.birth;
   const birthTimeKnown = birth.timeKnown !== false;
+  const observation = observationFromBirth(birth);
   const chart = safeCalculateChart(toCelestineBirth(birth));
   const planets = chart.planets.filter((planet) => NATAL_PLANETS.includes(planet.name));
   const nodes = chart.nodes.filter((node) => node.type === 'True');
-  const bodies = [...planets.map((p) => mapPlanet(p, birthTimeKnown)), ...nodes.map((n) => mapNode(n, birthTimeKnown))];
+  const bodies = [...planets.map((p) => mapPlanet(p, birthTimeKnown, observation)), ...nodes.map((n) => mapNode(n, birthTimeKnown))];
   const ascSign = birthTimeKnown ? trueSkySign(chart.angles.ascendant.longitude) : null;
   const chartRuler = ascSign ? TRADITIONAL_RULERS[ascSign] : null;
   for (const body of bodies) {
@@ -140,6 +235,7 @@ export function computeNatal(user) {
       sign: trueSkySign(cusp.longitude),
       longitude: normalizeDegrees(cusp.longitude),
       degree: Number(signDegree(cusp.longitude).toFixed(2)),
+      signMethod: 'ecliptic-house-cusp-boundary',
     })) : [],
     birthTimeKnown,
     chartRuler,
@@ -199,6 +295,11 @@ function riseSet(body, observer, timestamp, timeZone) {
 
 export function computeSky({ timestamp = new Date().toISOString(), place, timeZone }) {
   const date = new Date(timestamp);
+  const observation = {
+    date,
+    observer: new Astronomy.Observer(place.lat, place.lon, place.alt ?? 0),
+    place,
+  };
   const parts = getZonedParts(date, timeZone);
   const localInput = {
     date: `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`,
@@ -209,7 +310,7 @@ export function computeSky({ timestamp = new Date().toISOString(), place, timeZo
   };
   const chart = safeCalculateChart(toCelestineBirth(localInput));
   const bodies = [
-    ...chart.planets.filter((planet) => SKY_PLANETS.includes(planet.name)).map((p) => mapPlanet(p, false)),
+    ...chart.planets.filter((planet) => SKY_PLANETS.includes(planet.name)).map((p) => mapPlanet(p, false, observation)),
     ...chart.nodes.filter((node) => node.type === 'True').map((n) => mapNode(n, false)),
   ];
   const bodyByName = Object.fromEntries(bodies.map((body) => [body.body, body]));
