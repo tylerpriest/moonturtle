@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -43,8 +43,8 @@ const READING_SCHEMA = {
     },
     activations: {
       type: 'array',
-      minItems: 1,
-      maxItems: 3,
+      minItems: 3,
+      maxItems: 5,
       items: {
         type: 'object',
         additionalProperties: false,
@@ -100,13 +100,31 @@ function extractJson(text) {
 function promptFor(payload) {
   return `Write one MoonTurtle daily reading as strict JSON only.
 
-Rules:
+Target:
+- The answer should feel like a compact version of the master MoonTurtle reading, not a generic horoscope.
+- The source model is receiving calculated receipts. Do not re-calculate or argue with them.
+- The UI will separately show the sky and natal tables. Your job is synthesis: sky data -> natal pattern -> current activation -> personal meaning -> medicine.
+
+Voice rules:
+- Second person, contemplative, emotionally intelligent, precise.
+- Image first. A useful sentence should feel hand-written for this chart and this day.
+- Use "may", "can", "asks", "invites", "presses", "opens"; avoid prediction and command language.
+- Do not use: energy, vibes, alignment, manifestation, the universe, abundance, high vibration.
+- Avoid generic positivity, fear, doom, and mechanical planet lists.
+
+Content rules:
 - Use the provided true-sky sidereal / IAU-boundary data as receipts.
-- Choose only the loudest one to three signals.
+- Choose only the loudest one to three signals, then return 3 to 5 activation cards that explore those signals without padding.
 - Preserve agency: no fatalism, no prediction language, no commands disguised as cosmic certainty.
-- Use warm, grounded, image-rich language.
 - Do not mention birth date, birth time, exact coordinates, providers, APIs, or implementation details.
 - Match this exact JSON shape: headline, body, lunarAxis, activations, notice, avoid.
+
+Quality bar:
+- headline: 6-12 words, specific and memorable.
+- body: 3-5 sentences. Name today's central sky/natal interaction and what it asks the person to notice, release, express, or carry more cleanly.
+- lunarAxis.reading: 2-4 sentences connecting natal Moon, current Moon, phase, and today's emotional lesson.
+- activation themes: living dynamics, not textbook definitions.
+- notice/avoid: short, concrete, reflective, not commands.
 
 Input:
 ${JSON.stringify(payload, null, 2)}`;
@@ -119,6 +137,98 @@ function normaliseReading(reading, source, providerMeta) {
     providerMeta,
     generatedAt: new Date().toISOString(),
   };
+}
+
+function execFileWithInput(command, args, input, { timeout, maxBuffer = 1024 * 1024 * 4 } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    const finish = (callback) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      callback();
+    };
+    const fail = (error) => finish(() => reject(Object.assign(error, { stdout, stderr })));
+    const timer = timeout ? setTimeout(() => {
+      child.kill('SIGTERM');
+      const error = new Error(`Command timed out after ${timeout}ms.`);
+      error.killed = true;
+      error.code = 'ETIMEDOUT';
+      fail(error);
+    }, timeout) : null;
+
+    function append(chunk, streamName) {
+      const next = chunk.toString();
+      if (stdout.length + stderr.length + next.length > maxBuffer) {
+        child.kill('SIGTERM');
+        const error = new Error(`${streamName} exceeded maxBuffer.`);
+        error.code = 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER';
+        fail(error);
+        return '';
+      }
+      return next;
+    }
+
+    child.stdout.on('data', (chunk) => {
+      if (!settled) stdout += append(chunk, 'stdout');
+    });
+    child.stderr.on('data', (chunk) => {
+      if (!settled) stderr += append(chunk, 'stderr');
+    });
+    child.on('error', fail);
+    child.on('close', (code, signal) => {
+      finish(() => {
+        if (code === 0) {
+          resolve({ stdout, stderr });
+          return;
+        }
+        const error = new Error(stderr.trim() || `${command} exited with code ${code}${signal ? ` (${signal})` : ''}.`);
+        error.code = code;
+        error.signal = signal;
+        reject(Object.assign(error, { stdout, stderr }));
+      });
+    });
+    child.stdin.on('error', () => {});
+    child.stdin.end(input);
+  });
+}
+
+function extractCodexJsonl(stdout, stderr = '') {
+  const messages = [];
+  const events = [];
+  for (const line of stdout.split('\n')) {
+    if (!line.trim()) continue;
+    try {
+      const event = JSON.parse(line);
+      events.push([
+        event.type,
+        event.item?.type,
+        event.error?.message ?? event.message,
+      ].filter(Boolean).join(':'));
+      if (event.type === 'item.completed' && event.item?.type === 'agent_message' && typeof event.item.text === 'string') {
+        messages.push(event.item.text);
+      }
+      if (event.type === 'agent_message' && typeof event.text === 'string') {
+        messages.push(event.text);
+      }
+      if (event.type === 'turn.completed' && typeof event.final_message === 'string') {
+        messages.push(event.final_message);
+      }
+    } catch {
+      // Ignore non-JSON noise. Codex writes warnings to stderr in normal cases,
+      // but this keeps the bridge resilient across CLI versions.
+    }
+  }
+  const last = messages.at(-1);
+  if (!last) {
+    const stderrTail = stderr.trim().split('\n').slice(-3).join(' | ');
+    const tail = events.slice(-6).join(' | ') || stderrTail || 'no JSONL events';
+    throw new Error(`Codex did not write a final agent message. Last events: ${tail}`);
+  }
+  return extractJson(last);
 }
 
 async function commandExists(command) {
@@ -244,8 +354,9 @@ async function runCodex(prompt, payload = {}) {
   const reasoningEffort = codexReasoning(payload);
   try {
     await writeFile(schemaPath, JSON.stringify(READING_SCHEMA));
-    await execFileAsync('codex', [
+    const reading = await execFileWithInput('codex', [
       'exec',
+      '--json',
       '--skip-git-repo-check',
       '--sandbox',
       'read-only',
@@ -258,12 +369,18 @@ async function runCodex(prompt, payload = {}) {
       '--output-last-message',
       outputPath,
       '--ephemeral',
-      prompt,
-    ], {
+      '-',
+    ], prompt, {
       timeout: modelTimeoutMs(),
       maxBuffer: 1024 * 1024 * 4,
+    }).then(async ({ stdout, stderr }) => {
+      try {
+        return extractJson(await readFile(outputPath, 'utf8'));
+      } catch {
+        return extractCodexJsonl(stdout, stderr);
+      }
     });
-    return normaliseReading(extractJson(await readFile(outputPath, 'utf8')), 'local-codex-subscription', codexMeta(payload));
+    return normaliseReading(reading, 'local-codex-subscription', codexMeta(payload));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -375,19 +492,24 @@ async function generateReading(payload, { apiKey, apiProvider = 'openai' } = {})
   for (const name of order) {
     const runner = runners[name];
     if (!runner) continue;
+    const startedAt = Date.now();
     try {
       return await runner(prompt);
     } catch (error) {
       const timeout = isTimeoutError(error);
-      errors.push(`${name}: ${timeout ? `timed out after ${modelTimeoutMs()}ms` : error.message}`);
+      const elapsed = Date.now() - startedAt;
+      errors.push(`${name}: ${timeout ? `timed out after ${Math.round(modelTimeoutMs() / 1000)}s` : error.message} (${Math.round(elapsed / 1000)}s elapsed)`);
       if (timeout) break;
     }
   }
 
+  const timedOut = errors.some((entry) => entry.includes('timed out'));
   return {
     error: {
-      code: errors.some((entry) => entry.includes('timed out')) ? 'local_provider_timeout' : 'local_provider_unavailable',
-      message: 'No local subscription provider completed quickly enough. The client can use the local symbolic reading.',
+      code: timedOut ? 'local_provider_timeout' : 'local_provider_unavailable',
+      message: timedOut
+        ? `The local ${order[0] ?? 'AI'} subscription did not return a reading before the bridge timeout.`
+        : 'No local subscription provider was available to write the reading.',
       detail: errors,
     },
   };

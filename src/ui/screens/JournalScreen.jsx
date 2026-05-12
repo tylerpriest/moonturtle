@@ -2,11 +2,6 @@ import { useState } from 'react';
 import { getArchivedReading } from '../../reading/cache.js';
 import { MoonGlyph } from '../components/Primitives.jsx';
 
-function ribbonFromJournal(journal) {
-  if (!journal?.length) return [3, 12, 28, 45, 62, 78, 90, 98, 94, 82, 68, 52, 36, 20];
-  return journal.slice(0, 14).reverse().map((entry) => entry.illumination);
-}
-
 function groupJournal(journal) {
   const groups = [];
   const byDate = new Map();
@@ -16,6 +11,7 @@ function groupJournal(journal) {
       const group = {
         dateKey: key,
         localDate: entry.localDate ?? key,
+        phase: entry.phase,
         illumination: entry.illumination,
         waxing: entry.waxing,
         moonSign: entry.moonSign,
@@ -29,6 +25,20 @@ function groupJournal(journal) {
   return groups;
 }
 
+function ribbonFromGroups(groups) {
+  return groups.slice(0, 14).reverse();
+}
+
+function compactDateLabel(group) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(group?.dateKey ?? '');
+  if (match) {
+    const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(match[2]) - 1];
+    return `${Number(match[3])} ${month}`;
+  }
+  const label = String(group?.localDate ?? group?.dateKey ?? '').replace(/^\w+\s+/, '').replace(/\s+\d{4}$/, '');
+  return label || 'Date';
+}
+
 function modeBadge(entry) {
   if (entry.isFallback) return 'Fallback · Local deterministic';
   return `${entry.modeLabel ?? 'Quick glance'} · ${entry.modelLabel ?? 'GPT-5.5'}`;
@@ -36,6 +46,46 @@ function modeBadge(entry) {
 
 function engineLabel(entry, reading) {
   return reading?.engineLabel ?? entry?.engineLabel ?? entry?.sourceLabel ?? 'Reading engine';
+}
+
+function formatDuration(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${Math.round(ms / 1000)}s`;
+}
+
+function failureStage(code) {
+  if (code === 'local_provider_timeout') return 'Codex bridge';
+  if (code === 'provider_timeout') return 'Browser wait';
+  if (code === 'provider_invalid_schema') return 'Schema validation';
+  if (code === 'provider_not_attempted') return 'Provider selection';
+  if (code === 'api_key_provider_error') return 'API provider';
+  if (String(code ?? '').startsWith('provider_http_')) return 'Provider HTTP response';
+  return 'AI interpretation';
+}
+
+function FailureDetails({ reading }) {
+  const attempt = reading?.aiAttempt;
+  if (!attempt || attempt.status === 'completed' || attempt.status === 'skipped') return null;
+  const duration = formatDuration(attempt.durationMs);
+  return (
+    <div style={{marginTop:10, paddingTop:10, borderTop:'1px solid rgba(176,74,38,0.28)'}}>
+      <div className="eyebrow" style={{color:'var(--terracotta)'}}>Where it failed</div>
+      <div className="meta" style={{marginTop:6, lineHeight:1.45, letterSpacing:'0.03em'}}>
+        Stage: {failureStage(attempt.code)}{duration ? ` · Waited ${duration}` : ''}
+      </div>
+      {attempt.code && (
+        <div className="meta" style={{marginTop:5, lineHeight:1.45, letterSpacing:'0.03em'}}>
+          Code: {attempt.code}
+        </div>
+      )}
+      {attempt.detail?.length > 0 && (
+        <div className="meta" style={{marginTop:5, lineHeight:1.45, letterSpacing:'0.03em'}}>
+          Detail: {attempt.detail.join(' | ')}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function DetailList({ title, items = [], color }) {
@@ -136,6 +186,7 @@ function ReadingDetail({ selected, onBack }) {
                 <p className="body-prose" style={{fontSize:15, marginTop:5}}>
                   This reading is a rough local interpretation from calculated receipts.
                 </p>
+                <FailureDetails reading={reading}/>
               </div>
             )}
             <p className="body-prose">{reading.body}</p>
@@ -205,8 +256,8 @@ function ReadingDetail({ selected, onBack }) {
 export function JournalScreen({ state }) {
   const [selected, setSelected] = useState(null);
   const journal = state?.journal ?? [];
-  const ribbon = ribbonFromJournal(journal);
   const groups = groupJournal(journal);
+  const ribbon = ribbonFromGroups(groups);
 
   function openEntry(entry) {
     const archived = getArchivedReading(entry.birthHash, entry.readingId);
@@ -229,22 +280,30 @@ export function JournalScreen({ state }) {
 
       <div style={{height:22}}/>
 
-      <div style={{
-        display:'flex',
-        gap:6,
-        justifyContent:'space-between',
-        marginBottom:22,
-        padding:'14px 0',
-        borderTop:'1px solid var(--hairline)',
-        borderBottom:'1px solid var(--hairline)',
-      }}>
-        {ribbon.map((illumination, index) => (
-          <div key={`${illumination}-${index}`} style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4}}>
-            <MoonGlyph size={16} illumPct={illumination} waxing={index < ribbon.length / 2}/>
-            <div style={{fontFamily:'var(--sans)', fontSize:9, color:'var(--ink-mute)'}}>{index + 1}</div>
-          </div>
-        ))}
-      </div>
+      {ribbon.length > 0 && (
+        <div style={{
+          display:'flex',
+          gap:6,
+          justifyContent:ribbon.length < 8 ? 'space-between' : 'flex-start',
+          overflowX:'auto',
+          marginBottom:22,
+          padding:'14px 0',
+          borderTop:'1px solid var(--hairline)',
+          borderBottom:'1px solid var(--hairline)',
+        }}>
+          {ribbon.map((group) => (
+            <div
+              key={group.dateKey}
+              title={`${group.localDate}: ${group.phase ?? 'Moon'} in ${group.moonSign ?? 'the sky'}, ${group.illumination}% lit`}
+              aria-label={`${group.localDate}: ${group.phase ?? 'Moon'} in ${group.moonSign ?? 'the sky'}, ${group.illumination}% lit`}
+              style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4, minWidth:34}}
+            >
+              <MoonGlyph size={16} illumPct={group.illumination} waxing={group.waxing}/>
+              <div style={{fontFamily:'var(--sans)', fontSize:9, color:'var(--ink-mute)', whiteSpace:'nowrap'}}>{compactDateLabel(group)}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!journal.length && (
         <div className="card warm">

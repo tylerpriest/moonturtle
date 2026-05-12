@@ -48,8 +48,8 @@ export function SkyScreen({ state }) {
             </div>
 
             <div style={{marginBottom:14}}>
-              <div style={{display:'flex', justifyContent:'space-between', fontFamily:'var(--serif-sc)', fontSize:10, letterSpacing:'0.16em', color:'var(--ink-mute)', marginBottom:6}}>
-                <span>New</span><span>First</span><span>Full</span><span>Last</span><span>New</span>
+              <div style={{display:'flex', justifyContent:'space-between', fontFamily:'var(--serif-sc)', fontSize:10, letterSpacing:'0.14em', color:'var(--ink-mute)', marginBottom:6}}>
+                <span>New</span><span>First Qtr</span><span>Full</span><span>Last Qtr</span><span>New</span>
               </div>
               <div style={{position:'relative', height:6, background:'var(--hairline)', borderRadius:3}}>
                 <div style={{
@@ -71,28 +71,13 @@ export function SkyScreen({ state }) {
 
             <table className="receipt">
               <tbody>
-                <tr><td>Local date</td><td>{sky.localDate}</td></tr>
-                <tr><td>Local time</td><td>{sky.localTime}</td></tr>
-                <tr><td>Place</td><td>{sky.place.name}</td></tr>
                 <tr><td>Illumination</td><td>{sky.lunar.illumination}%</td></tr>
                 <tr><td>Moon age</td><td>{sky.lunar.age} days into lunation</td></tr>
                 <tr><td>Moonrise</td><td>{sky.lunar.moonrise}</td></tr>
                 <tr><td>Moonset</td><td>{sky.lunar.moonset}</td></tr>
-                <tr><td>Previous quarter</td><td>{sky.lunar.previousQuarter}</td></tr>
-                <tr><td>Next quarter</td><td>{sky.lunar.nextQuarter}</td></tr>
+                <tr><td>Last Quarter</td><td>{sky.lunar.previousQuarter}</td></tr>
                 <tr><td>Next New Moon</td><td>{sky.lunar.nextNewMoon}</td></tr>
                 <tr><td>Sun in</td><td>{sky.lunar.sunSign}</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{height:18}}/>
-
-          <div className="section-label">Current Bodies</div>
-          <div className="card" style={{padding:'4px 18px'}}>
-            <table className="receipt" style={{fontSize:13}}>
-              <tbody>
-                {sky.bodies.map((body) => <BodyRow key={body.body} body={body}/>)}
               </tbody>
             </table>
           </div>
@@ -106,10 +91,26 @@ export function SkyScreen({ state }) {
             </svg>
             <div>
               <div className="eyebrow">Calculated</div>
-              <div style={{fontFamily:'var(--serif)', fontSize:14, color:'var(--ink-soft)'}}>
-                True-sky sidereal · IAU boundaries · {sky.framework}
+              <div style={{fontFamily:'var(--serif)', fontSize:14, color:'var(--ink-soft)', lineHeight:1.35}}>
+                True-sky sidereal · IAU boundaries · {sky.localDate}, {sky.localTime}
               </div>
+              <div className="meta" style={{marginTop:2}}>{sky.place.name}</div>
             </div>
+          </div>
+
+          <div style={{height:18}}/>
+
+          <div className="section-label">Current Bodies</div>
+          <div className="card" style={{padding:'4px 18px'}}>
+            <table className="receipt" style={{fontSize:13}}>
+              <tbody>
+                {sky.bodies.map((body) => <BodyRow key={body.body} body={body}/>)}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="meta" style={{marginTop:8, textAlign:'right'}}>
+            Framework: {sky.framework}
           </div>
         </>
       )}

@@ -40,17 +40,20 @@ function ManualPlaceButton({ place, onClick, children }) {
 }
 
 export function BirthSetup({ onNext }) {
-  const [displayName, setDisplayName] = useState(DEMO_USER.displayName);
-  const [birthDate, setBirthDate] = useState(DEMO_USER.birth.date);
-  const [birthTime, setBirthTime] = useState(DEMO_USER.birth.time);
-  const [birthPlaceQuery, setBirthPlaceQuery] = useState(DEMO_USER.birth.place.name);
-  const [birthPlace, setBirthPlace] = useState(DEMO_USER.birth.place);
-  const [birthTimeZone, setBirthTimeZone] = useState(DEMO_USER.birth.timeZone);
+  const [displayName, setDisplayName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [birthTime, setBirthTime] = useState('');
+  const [birthPlaceQuery, setBirthPlaceQuery] = useState('');
+  const [birthPlace, setBirthPlace] = useState(null);
+  const [birthTimeZone, setBirthTimeZone] = useState('');
   const [results, setResults] = useState([]);
   const [status, setStatus] = useState('');
 
   async function handleSearch() {
-    if (!birthPlaceQuery.trim()) return;
+    if (!birthPlaceQuery.trim()) {
+      setStatus('Enter a city, region, or country first.');
+      return;
+    }
     setStatus('Searching places...');
     const found = await searchPlaces(birthPlaceQuery.trim());
     setResults(found);
@@ -66,8 +69,27 @@ export function BirthSetup({ onNext }) {
     setStatus(`Using ${place.name}.`);
   }
 
+  function useDevProfile() {
+    setDisplayName(DEMO_USER.displayName);
+    setBirthDate(DEMO_USER.birth.date);
+    setBirthTime(DEMO_USER.birth.time);
+    setBirthPlace(DEMO_USER.birth.place);
+    setBirthPlaceQuery(DEMO_USER.birth.place.name);
+    setBirthTimeZone(DEMO_USER.birth.timeZone);
+    setResults([]);
+    setStatus('Tyler dev profile added. Continue when you want to test with seed details.');
+  }
+
   function continueWithBirth() {
-    const place = birthPlace ?? DEMO_USER.birth.place;
+    if (!birthDate) {
+      setStatus('Add a birth date before continuing.');
+      return;
+    }
+    if (!birthPlace) {
+      setStatus('Find and choose a birthplace before continuing.');
+      return;
+    }
+    const place = birthPlace;
     onNext({
       schemaVersion: 1,
       displayName: displayName.trim() || 'You',
@@ -133,13 +155,8 @@ export function BirthSetup({ onNext }) {
           </div>
         )}
 
-        <ManualPlaceButton place={DEMO_USER.birth.place} onClick={() => {
-          setBirthPlace(DEMO_USER.birth.place);
-          setBirthPlaceQuery(DEMO_USER.birth.place.name);
-          setBirthTimeZone(DEMO_USER.birth.timeZone);
-          setStatus('Using the seed birthplace.');
-        }}>
-          Use seed birthplace: Tauranga, NZ
+        <ManualPlaceButton place={DEMO_USER.birth.place} onClick={useDevProfile}>
+          Quick add Tyler dev profile
         </ManualPlaceButton>
 
         <div style={{height:16}}/>
@@ -239,7 +256,7 @@ export function Permission({ draftUser, onDone }) {
 
         <button className="btn" onClick={allowLocation} disabled={busy}>{busy ? 'Locating...' : 'Allow & Continue'}</button>
         <div style={{height:10}}/>
-        <button className="btn btn-ghost" onClick={() => finish(DEMO_USER.currentPlace.place, 'manual')}>Use Manly, Sydney</button>
+        <button className="btn btn-ghost" onClick={() => finish(DEMO_USER.currentPlace.place, 'manual')}>Use Tyler dev location: Manly, Sydney</button>
         <div style={{height:40}}/>
       </div>
     </div>

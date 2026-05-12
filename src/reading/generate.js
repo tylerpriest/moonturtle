@@ -168,6 +168,54 @@ function bodyForce(body) {
   return BODY_FORCES[body] ?? phraseList(bodyEntry(body).keywords, 4);
 }
 
+function bodyNoun(body) {
+  return {
+    Moon: 'the feeling-body',
+    Sun: 'the visible self',
+    Mercury: 'the sentence',
+    Venus: 'the value question',
+    Mars: 'the heat',
+    Jupiter: 'the widening',
+    Saturn: 'the structure',
+    Uranus: 'the interruption',
+    Neptune: 'the soft place',
+    Pluto: 'the pressure point',
+    'North Node': 'the growth edge',
+    'South Node': 'the familiar reflex',
+  }[body] ?? `${body} thread`;
+}
+
+function targetNoun(target) {
+  return {
+    Moon: 'emotional baseline',
+    Sun: 'sense of self',
+    Mercury: 'inner language',
+    Venus: 'love and value pattern',
+    Mars: 'wanting and courage',
+    Jupiter: 'faith and permission',
+    Saturn: 'inner structure',
+    Uranus: 'need for freedom',
+    Neptune: 'sensitivity',
+    Pluto: 'depth instinct',
+    'North Node': 'growth edge',
+    'South Node': 'old reflex',
+    Ascendant: 'body and first response',
+    Descendant: 'relationship mirror',
+    Midheaven: 'public path',
+    IC: 'private ground',
+  }[target] ?? targetField(target);
+}
+
+function aspectMood(aspect) {
+  return {
+    conjunct: 'in the foreground',
+    opposing: 'across a mirror',
+    squaring: 'under creative pressure',
+    trining: 'with a steadier current',
+    sextiling: 'through a small opening',
+  }[aspect] ?? 'in contact';
+}
+
 function targetField(target) {
   return TARGET_FIELDS[target] ?? `${target?.toLowerCase?.() ?? 'this'} pattern`;
 }
@@ -239,16 +287,9 @@ function questionForSignal(signal) {
 function makeHeadline(currentSky, signals) {
   const [top] = primarySignals(signals);
   if (!top) {
-    return `${currentSky.lunar.moonSign} Moon, ${currentSky.lunar.phase.toLowerCase()}.`;
+    return `${currentSky.lunar.moonSign} Moon, one honest thread at a time.`;
   }
-  const verbs = {
-    conjunct: 'meets',
-    opposing: 'mirrors',
-    squaring: 'presses on',
-    trining: 'steadies',
-    sextiling: 'opens',
-  };
-  return `${top.transitingBody} ${verbs[top.aspect] ?? 'touches'} natal ${top.natalTarget}.`;
+  return `${bodyNoun(top.transitingBody)} meets your ${targetNoun(top.natalTarget)}.`;
 }
 
 function makeBody({ natalChart, currentSky, signals }) {
@@ -256,20 +297,23 @@ function makeBody({ natalChart, currentSky, signals }) {
   const loud = primarySignals(signals);
   const phase = moonPhaseEntry(currentSky.lunar.phase);
   const moonKeywords = phraseList(wordsFor(currentSky.lunar.moonSign), 3);
+  const sunKeywords = phraseList(wordsFor(currentSky.lunar.sunSign), 2);
   const phaseBasis = cleanBasis(phase, 'the lunar cycle asks for care with what is ending and beginning.');
-  const lunarSentence = `The ${currentSky.lunar.phase.toLowerCase()} Moon in ${currentSky.lunar.moonSign} sets a tone of ${moonKeywords}; with ${currentSky.lunar.illumination}% light, the lunar work is more about ${pair(phase.keywords)} than proving a new direction.`;
+  const lunarSentence = `Today is a ${currentSky.lunar.phase.toLowerCase()} Moon in ${currentSky.lunar.moonSign} day: ${moonKeywords}, with ${currentSky.lunar.illumination}% light and a lunar task of ${pair(phase.keywords)}. The Sun in ${currentSky.lunar.sunSign} keeps the larger chapter around ${sunKeywords}.`;
 
   if (!loud.length) {
     const natalMoon = signEntry(moon?.sign);
     return `${lunarSentence} Your natal Moon in ${moon?.sign ?? 'your chart'} gives the reading its anchor: ${pair(natalMoon.keywords)} before performance, body signal before theory. ${phaseBasis}`;
   }
 
-  const main = interpretSignal(loud[0]);
-  const second = loud[1]
-    ? `A second thread, ${conciseSignal(loud[1])}, keeps ${targetField(loud[1].natalTarget)} in the room; it matters, but it does not need to become the whole story.`
+  const [top] = loud;
+  const topAspect = aspectLanguage(top.aspect);
+  const main = `The loudest receipt is ${conciseSignal(top)}, ${aspectMood(top.aspect)}. In plain language, ${bodyNoun(top.transitingBody)} is touching your ${targetNoun(top.natalTarget)}; ${topAspect.work}.`;
+  const secondary = loud[1]
+    ? `A second thread, ${conciseSignal(loud[1])}, keeps your ${targetNoun(loud[1].natalTarget)} in the room; it matters, but it does not need to become the whole story.`
     : phaseBasis;
 
-  return `${lunarSentence} ${main} ${second}`;
+  return `${lunarSentence} ${main} ${secondary} The useful move is not more interpretation; it is one cleaner relationship between what you feel, what you name, and what you actually carry today.`;
 }
 
 function makeLunarAxis(natalChart, currentSky) {
@@ -457,6 +501,33 @@ function makeReadingId(dateKey) {
   return `${dateKey}:${random}`;
 }
 
+function stableHash(value) {
+  const input = typeof value === 'string' ? value : JSON.stringify(value);
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function readingContentSignature(reading) {
+  return stableHash({
+    source: reading.source,
+    headline: reading.headline,
+    body: reading.body,
+    lunarAxis: reading.lunarAxis,
+    activations: reading.activations,
+    receipts: reading.receipts,
+    notice: reading.notice,
+    avoid: reading.avoid,
+  });
+}
+
+function makeDeterministicReadingId(dateKey, mode, contentSignature) {
+  return `${dateKey}:local:${mode}:${contentSignature}`;
+}
+
 export function aiMode(settings = {}) {
   return settings.aiMode ?? 'auto';
 }
@@ -588,7 +659,10 @@ export function shouldAttemptProvider(settings = {}) {
 }
 
 function providerTimeoutMs(mode) {
-  const fallback = mode === 'api-key' ? 90000 : 65000;
+  // The local Vite bridge has its own model timeout. The browser waits longer so
+  // MoonTurtle can receive the bridge's structured failure reason instead of a
+  // generic AbortError.
+  const fallback = mode === 'api-key' ? 120000 : 95000;
   const configured = Number(import.meta.env.VITE_MOONTURTLE_PROVIDER_TIMEOUT_MS ?? fallback);
   return Number.isFinite(configured) && configured > 0 ? configured : fallback;
 }
@@ -613,9 +687,16 @@ function finalizeReading(reading, input, overrides = {}) {
   const isFallback = Boolean(overrides.isFallback);
   const mode = input.settings?.readingMode ?? 'quick-glance';
   const modeLabel = mode === 'full' ? 'Full reading' : 'Quick glance';
+  const contentSignature = reading.contentSignature ?? readingContentSignature(reading);
+  const isDeterministicLocal = isFallback || engine.provider === 'local';
   return {
     ...reading,
-    readingId: reading.readingId ?? makeReadingId(dateKey),
+    readingId: reading.readingId ?? (
+      isDeterministicLocal
+        ? makeDeterministicReadingId(dateKey, mode, contentSignature)
+        : makeReadingId(dateKey)
+    ),
+    contentSignature,
     dateKey,
     generatedAt: reading.generatedAt ?? new Date().toISOString(),
     readingMode: mode,
@@ -747,7 +828,9 @@ export async function generateReading(input) {
     return fallbackReading(local, input, {
       startedAt,
       code: error?.name === 'AbortError' ? 'provider_timeout' : 'provider_error',
-      message: error?.name === 'AbortError' ? 'AI interpretation timed out.' : (error?.message ?? 'AI interpretation did not complete.'),
+      message: error?.name === 'AbortError'
+        ? 'The app stopped waiting before the AI bridge returned a reading.'
+        : (error?.message ?? 'AI interpretation did not complete.'),
     });
   }
 }

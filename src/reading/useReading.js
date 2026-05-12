@@ -14,12 +14,16 @@ function timeZoneFor(user) {
 
 function cacheModeFor(settings) {
   const mode = aiMode(settings);
+  const model = settings.model?.trim() || 'gpt-5.5';
+  const reasoning = settings.reasoningEffort?.trim() || 'xhigh';
+  if (mode === 'auto' || mode === 'codex') return `${mode}:${model}:${reasoning}`;
+  if (mode === 'claude') return mode;
   if (mode !== 'api-key') return mode;
   const provider = settings.apiProvider ?? 'openai';
   const key = settings.apiKeys?.[provider]?.trim() || settings.apiKey?.trim();
   return key
-    ? `api-key:${provider}:configured`
-    : `api-key:${provider}:empty`;
+    ? `api-key:${provider}:${model}:${reasoning}:configured`
+    : `api-key:${provider}:${model}:${reasoning}:empty`;
 }
 
 function buildJournalEntry(user, sky, reading) {
@@ -34,6 +38,8 @@ function buildJournalEntry(user, sky, reading) {
     moonSign: sky.lunar.moonSign,
     source: reading.source,
     sourceLabel: reading.sourceDetail?.label,
+    sourceMetadataVersion: reading.sourceDetail?.metadataVersion,
+    contentSignature: reading.contentSignature,
     readingMode: reading.readingMode ?? 'quick-glance',
     modeLabel: reading.modeLabel ?? 'Quick glance',
     engine: reading.engine,

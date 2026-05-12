@@ -44,13 +44,13 @@ const AI_OPTIONS = [
     id: 'auto',
     label: 'Auto',
     title: 'Codex first',
-    body: 'Uses your local Codex login with gpt-5.5 and xhigh reasoning. Choose Claude explicitly to switch engines.',
+    body: 'Uses your local Codex login first. The quality selector below controls which Codex model and reasoning level are used.',
   },
   {
     id: 'codex',
     label: 'Codex',
     title: 'Codex only',
-    body: 'Use your logged-in Codex CLI for localhost readings: gpt-5.5 with xhigh reasoning.',
+    body: 'Use your logged-in Codex CLI for localhost readings. The quality selector below controls model and reasoning.',
   },
   {
     id: 'claude',
@@ -71,6 +71,95 @@ const AI_OPTIONS = [
     body: 'Use the built-in symbolic engine only. This is clearly marked as a rough local fallback.',
   },
 ];
+
+const CODEX_QUALITY_OPTIONS = [
+  {
+    id: 'best',
+    label: 'Best',
+    title: 'GPT-5.5 · xhigh',
+    model: 'gpt-5.5',
+    reasoningEffort: 'xhigh',
+    body: 'Slowest, closest to the intended MoonTurtle voice.',
+  },
+  {
+    id: 'strong',
+    label: 'Strong',
+    title: 'GPT-5.5 · high',
+    model: 'gpt-5.5',
+    reasoningEffort: 'high',
+    body: 'Same model, less reasoning time. Good first reliability test.',
+  },
+  {
+    id: 'steady',
+    label: 'Steady',
+    title: 'GPT-5.4 · high',
+    model: 'gpt-5.4',
+    reasoningEffort: 'high',
+    body: 'Often a better speed/quality balance if 5.5 times out.',
+  },
+  {
+    id: 'fast',
+    label: 'Fast',
+    title: 'GPT-5.4 mini · low',
+    model: 'gpt-5.4-mini',
+    reasoningEffort: 'low',
+    body: 'Fastest working test path. Useful for debugging and quick drafts.',
+  },
+];
+
+function selectedCodexQuality(settings = {}) {
+  const model = settings.model ?? 'gpt-5.5';
+  const reasoningEffort = settings.reasoningEffort ?? 'xhigh';
+  return CODEX_QUALITY_OPTIONS.find((option) => (
+    option.model === model && option.reasoningEffort === reasoningEffort
+  ))?.id ?? 'custom';
+}
+
+function CodexQualityChoice({ settings, onSettingsChange }) {
+  const selectedId = selectedCodexQuality(settings);
+  return (
+    <div style={{marginTop:16, padding:'14px', border:'1px solid var(--hairline)', background:'rgba(253,248,236,0.68)'}}>
+      <div className="eyebrow">Codex quality</div>
+      <p className="meta" style={{marginTop:6, marginBottom:12, lineHeight:1.45}}>
+        Changes model and reasoning only. It does not change the selected engine, so you can test why one setting times out and another finishes.
+      </p>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+        {CODEX_QUALITY_OPTIONS.map((option) => {
+          const selected = option.id === selectedId;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onSettingsChange({ model: option.model, reasoningEffort: option.reasoningEffort })}
+              style={{
+                border:selected ? '1px solid var(--terracotta)' : '1px solid var(--hairline)',
+                background:selected ? 'rgba(176,74,38,0.08)' : 'var(--paper)',
+                color:'var(--ink)',
+                padding:'10px 10px',
+                minHeight:96,
+                textAlign:'left',
+                cursor:'pointer',
+              }}
+            >
+              <span className="eyebrow" style={{color:selected ? 'var(--terracotta)' : 'var(--ink-mute)'}}>{option.label}</span>
+              <span style={{display:'block', fontFamily:'var(--serif)', fontSize:15, fontStyle:'italic', color:'var(--ink)', marginTop:4}}>
+                {option.title}
+              </span>
+              <span className="meta" style={{display:'block', marginTop:6, lineHeight:1.35, letterSpacing:'0.03em'}}>
+                {option.body}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {selectedId === 'custom' && (
+        <p className="meta" style={{marginTop:10, lineHeight:1.45}}>
+          Custom setting in use: {settings?.model ?? 'gpt-5.5'} · {settings?.reasoningEffort ?? 'xhigh'} reasoning.
+        </p>
+      )}
+    </div>
+  );
+}
 
 function sourceLabel(reading) {
   const source = reading?.source;
@@ -99,11 +188,27 @@ function useElapsedSeconds(startedAt, active) {
   return Math.max(0, Math.floor((now - startedAt) / 1000));
 }
 
+function formatDuration(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${Math.round(ms / 1000)}s`;
+}
+
+function failureStage(code) {
+  if (code === 'local_provider_timeout') return 'Codex bridge';
+  if (code === 'provider_timeout') return 'Browser wait';
+  if (code === 'provider_invalid_schema') return 'Schema validation';
+  if (code === 'provider_not_attempted') return 'Provider selection';
+  if (code === 'api_key_provider_error') return 'API provider';
+  if (String(code ?? '').startsWith('provider_http_')) return 'Provider HTTP response';
+  return 'AI interpretation';
+}
+
 function EngineStatus({ settings, state }) {
   const loading = state?.loading;
   const configuredEngine = engineForSettings(settings);
   const reading = state?.reading;
-  const engine = loading?.engine ?? reading?.engine ?? configuredEngine;
+  const activeEngine = loading?.engine ?? reading?.engine ?? configuredEngine;
   const elapsed = useElapsedSeconds(loading?.startedAt, Boolean(loading));
   const statusLabel = loading?.statusLabel
     ?? state?.interpretationStatus?.statusLabel
@@ -112,6 +217,8 @@ function EngineStatus({ settings, state }) {
     ?? state?.interpretationStatus?.detail
     ?? reading?.aiAttempt?.message
     ?? 'The next reading will use the selected engine after local receipts are ready.';
+  const failedAttempt = !loading && reading?.aiAttempt?.status === 'failed' ? reading.aiAttempt : null;
+  const failedDuration = formatDuration(failedAttempt?.durationMs);
 
   return (
     <div className={`status-surface ${!loading && reading?.isFallback ? 'is-fallback' : ''}`} style={{marginTop:16}}>
@@ -123,9 +230,15 @@ function EngineStatus({ settings, state }) {
         <div className="status-pill">{loading ? `${elapsed}s` : (state?.fromCache ? 'Saved' : 'Current')}</div>
       </div>
       <div style={{marginTop:10}}>
-        <div className="eyebrow">Engine in use</div>
-        <div className="status-engine">{formatEngineLabel(engine)}</div>
+        <div className="eyebrow">{loading ? 'Currently writing with' : (reading ? 'Last reading used' : 'Next reading will use')}</div>
+        <div className="status-engine">{formatEngineLabel(activeEngine)}</div>
       </div>
+      {(reading || loading) && (
+        <div style={{marginTop:10, paddingTop:10, borderTop:'1px solid var(--hairline)'}}>
+          <div className="eyebrow">Next reading will use</div>
+          <div className="status-engine">{formatEngineLabel(configuredEngine)}</div>
+        </div>
+      )}
       <p className="meta" style={{marginTop:8, lineHeight:1.45, letterSpacing:'0.03em'}}>
         {detail}
       </p>
@@ -133,6 +246,14 @@ function EngineStatus({ settings, state }) {
         <p className="meta" style={{marginTop:8, lineHeight:1.45, letterSpacing:'0.03em'}}>
           Last provider detail: {reading.aiAttempt.detail.join(' | ')}
         </p>
+      )}
+      {failedAttempt && (
+        <div style={{marginTop:10, paddingTop:10, borderTop:'1px solid rgba(176,74,38,0.28)'}}>
+          <div className="eyebrow" style={{color:'var(--terracotta)'}}>Failure point</div>
+          <p className="meta" style={{marginTop:6, lineHeight:1.45, letterSpacing:'0.03em'}}>
+            Stage: {failureStage(failedAttempt.code)} · Code: {failedAttempt.code ?? 'unknown'}{failedDuration ? ` · Waited ${failedDuration}` : ''}
+          </p>
+        </div>
       )}
     </div>
   );
@@ -251,6 +372,38 @@ function ApiProviderChoice({ settings, onSettingsChange }) {
   );
 }
 
+function LocalDataControls({ onResetLocalData }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <div className="card" style={{padding:'20px 20px 18px'}}>
+      <div className="section-label">Local Data</div>
+      <h2 className="h-card" style={{fontSize:19, marginBottom:6}}>Start fresh on this device.</h2>
+      <p className="body-prose" style={{fontSize:15}}>
+        Clears MoonTurtle's saved birth profile, settings, provider keys, readings, archives, and journal history from this browser only.
+      </p>
+      <button
+        type="button"
+        className={armed ? 'btn btn-primary' : 'btn btn-ghost'}
+        onClick={() => {
+          if (!armed) {
+            setArmed(true);
+            return;
+          }
+          onResetLocalData?.();
+        }}
+        style={{marginTop:14}}
+      >
+        {armed ? 'Confirm clear local data' : 'Clear local data'}
+      </button>
+      {armed && (
+        <p className="meta" style={{marginTop:10, lineHeight:1.45}}>
+          Click again to clear MoonTurtle data and return to setup.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function AISettings({ settings, state, onSettingsChange }) {
   const active = settings?.aiMode ?? 'auto';
   const reading = state?.reading;
@@ -294,6 +447,10 @@ function AISettings({ settings, state, onSettingsChange }) {
 
       <EngineStatus settings={settings} state={state}/>
 
+      {(active === 'auto' || active === 'codex' || (active === 'api-key' && (settings?.apiProvider ?? 'openai') === 'openai')) && (
+        <CodexQualityChoice settings={settings} onSettingsChange={onSettingsChange}/>
+      )}
+
       <ProviderKeys settings={settings} onSettingsChange={onSettingsChange}/>
 
       {active === 'api-key' && <ApiProviderChoice settings={settings} onSettingsChange={onSettingsChange}/>}
@@ -311,7 +468,7 @@ function AISettings({ settings, state, onSettingsChange }) {
   );
 }
 
-export function MethodScreen({ settings, state, onSettingsChange }) {
+export function MethodScreen({ settings, state, onSettingsChange, onResetLocalData }) {
   return (
     <div style={{padding:'24px 26px 36px'}}>
       <div className="eyebrow">Settings &amp; Transparency</div>
@@ -321,6 +478,10 @@ export function MethodScreen({ settings, state, onSettingsChange }) {
       <div style={{height:22}}/>
 
       <AISettings settings={settings} state={state} onSettingsChange={onSettingsChange}/>
+
+      <div style={{height:24}}/>
+
+      <LocalDataControls onResetLocalData={onResetLocalData}/>
 
       <div style={{height:24}}/>
 

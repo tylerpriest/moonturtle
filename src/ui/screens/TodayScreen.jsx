@@ -196,6 +196,52 @@ function attemptMessage(reading) {
   return attempt.message ?? 'AI interpretation did not complete.';
 }
 
+function formatDuration(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${Math.round(ms / 1000)}s`;
+}
+
+function attemptedEngineLabel(attempt = {}) {
+  return attempt.engine?.displayName
+    ?? attempt.engine?.attemptedEngine?.displayName
+    ?? 'AI provider';
+}
+
+function failureStage(code) {
+  if (code === 'local_provider_timeout') return 'Codex bridge';
+  if (code === 'provider_timeout') return 'Browser wait';
+  if (code === 'provider_invalid_schema') return 'Schema validation';
+  if (code === 'provider_not_attempted') return 'Provider selection';
+  if (code === 'api_key_provider_error') return 'API provider';
+  if (String(code ?? '').startsWith('provider_http_')) return 'Provider HTTP response';
+  return 'AI interpretation';
+}
+
+function FailureDetails({ reading }) {
+  const attempt = reading?.aiAttempt;
+  if (!attempt || attempt.status === 'completed' || attempt.status === 'skipped') return null;
+  const duration = formatDuration(attempt.durationMs);
+  return (
+    <div style={{marginTop:12, paddingTop:11, borderTop:'1px solid rgba(176,74,38,0.28)'}}>
+      <div className="eyebrow" style={{color:'var(--terracotta)'}}>Where it failed</div>
+      <div className="meta" style={{marginTop:6, lineHeight:1.45, letterSpacing:'0.03em'}}>
+        Stage: {failureStage(attempt.code)} · Engine: {attemptedEngineLabel(attempt)}{duration ? ` · Waited ${duration}` : ''}
+      </div>
+      {attempt.code && (
+        <div className="meta" style={{marginTop:5, lineHeight:1.45, letterSpacing:'0.03em'}}>
+          Code: {attempt.code}
+        </div>
+      )}
+      {attempt.detail?.length > 0 && (
+        <div className="meta" style={{marginTop:5, lineHeight:1.45, letterSpacing:'0.03em'}}>
+          Detail: {attempt.detail.join(' | ')}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InterpretationStatus({ state }) {
   const loading = state?.loading;
   const status = loading ?? state?.interpretationStatus;
@@ -238,6 +284,7 @@ function FallbackNotice({ reading, onRetry }) {
           {reading.fallbackReason}
         </p>
       )}
+      <FailureDetails reading={reading}/>
       {onRetry && reading.providerAttempted && (
         <button
           type="button"
