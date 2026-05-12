@@ -19,9 +19,17 @@ function AppTopBar({ settings, readingState, onSettings }) {
     ?? (readingState?.reading?.isFallback ? 'Fallback shown' : 'Settings');
   return (
     <div className="app-global-bar">
-      <button type="button" className="settings-trigger" onClick={onSettings}>
-        <span className="settings-trigger-title">{status}</span>
-        <span className="settings-trigger-engine">{formatEngineLabel(engine)}</span>
+      <button
+        type="button"
+        className="settings-trigger"
+        onClick={onSettings}
+        aria-label="Open settings"
+      >
+        <span className="settings-trigger-copy">
+          <span className="settings-trigger-title">{status}</span>
+          <span className="settings-trigger-engine">{formatEngineLabel(engine)}</span>
+        </span>
+        <span className="settings-trigger-action">Settings</span>
       </button>
     </div>
   );
