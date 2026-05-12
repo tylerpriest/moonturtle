@@ -21,6 +21,7 @@ This lexicon is not copied from one book, author, or school. It is a MoonTurtle-
 - **Modern Western astrology:** psychological sign, planet, house, and aspect meanings.
 - **Traditional Western astrology:** elements, modalities, rulerships, angularity, and inherited house topics.
 - **Lunar cycle practice:** waxing, full, waning, and dark Moon timing language.
+- **Solar cycle practice:** Sun-sign chapters, vitality, visibility, seasonal emphasis, and the longer arc of what is being lit.
 - **Somatic reflective practice:** non-medical body metaphors and nervous-system reflection prompts.
 - **MoonTurtle editorial synthesis:** agency-first wording, curation, and product voice.
 

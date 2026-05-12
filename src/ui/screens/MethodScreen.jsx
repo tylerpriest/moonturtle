@@ -61,8 +61,8 @@ const AI_OPTIONS = [
   {
     id: 'api-key',
     label: 'API key',
-    title: 'Your key',
-    body: 'Use a saved provider API key for readings when the app is not using local subscriptions.',
+    title: 'Saved API key',
+    body: 'Use the selected saved API key for readings only when this engine is chosen.',
   },
   {
     id: 'local',
@@ -78,6 +78,7 @@ function sourceLabel(reading) {
   if (reading?.isFallback) return 'Rough local fallback';
   if (source === 'local-codex-subscription') return 'Codex subscription';
   if (source === 'local-claude-subscription') return 'Claude subscription';
+  if (source === 'user-openai-key') return 'Your OpenAI API key';
   if (source === 'user-anthropic-key') return 'Your Anthropic API key';
   if (source === 'anthropic-provider') return 'Hosted Claude API';
   if (providerAttempted) return 'Local symbolic fallback';
@@ -137,6 +138,119 @@ function EngineStatus({ settings, state }) {
   );
 }
 
+const PROVIDER_KEYS = [
+  {
+    id: 'openai',
+    label: 'OpenAI API key',
+    placeholder: 'sk-proj-...',
+  },
+  {
+    id: 'anthropic',
+    label: 'Anthropic API key',
+    placeholder: 'sk-ant-...',
+  },
+];
+
+function apiKeysFor(settings = {}) {
+  return {
+    openai: '',
+    anthropic: '',
+    ...(settings.apiKeys ?? {}),
+  };
+}
+
+function ProviderKeys({ settings, onSettingsChange }) {
+  const keys = apiKeysFor(settings);
+
+  function updateKey(provider, value) {
+    onSettingsChange({
+      apiKeys: {
+        ...keys,
+        [provider]: value,
+      },
+    });
+  }
+
+  return (
+    <div style={{marginTop:16, padding:'14px', border:'1px solid var(--hairline)', background:'rgba(253,248,236,0.68)'}}>
+      <div className="eyebrow">Provider keys</div>
+      <p className="meta" style={{marginTop:6, marginBottom:12, lineHeight:1.45}}>
+        Saved on this device. Adding or clearing a key does not change the engine in use.
+      </p>
+      <div style={{display:'flex', flexDirection:'column', gap:12}}>
+        {PROVIDER_KEYS.map((provider) => {
+          const value = keys[provider.id] ?? '';
+          return (
+            <label key={provider.id} style={{display:'block'}}>
+              <span className="eyebrow">{provider.label}</span>
+              <input
+                type="password"
+                value={value}
+                onChange={(event) => updateKey(provider.id, event.target.value)}
+                placeholder={provider.placeholder}
+                autoComplete="off"
+                style={{
+                  width:'100%',
+                  marginTop:6,
+                  fontFamily:'var(--sans)',
+                  fontSize:13,
+                  color:'var(--ink)',
+                  background:'var(--paper)',
+                  border:'1px solid var(--hairline-strong)',
+                  padding:'11px 12px',
+                }}
+              />
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, marginTop:7}}>
+                <span className="meta">{value ? 'Key stored locally' : 'No key stored'}</span>
+                {value && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => updateKey(provider.id, '')}
+                    style={{width:'auto', padding:'7px 10px', fontSize:9}}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ApiProviderChoice({ settings, onSettingsChange }) {
+  return (
+    <div style={{marginTop:16, padding:'14px', border:'1px solid var(--hairline)', background:'rgba(253,248,236,0.68)'}}>
+      <label style={{display:'block'}}>
+        <span className="eyebrow">API engine provider</span>
+        <select
+          value={settings?.apiProvider ?? 'openai'}
+          onChange={(event) => onSettingsChange({ apiProvider: event.target.value })}
+          style={{
+            width:'100%',
+            marginTop:6,
+            fontFamily:'var(--serif)',
+            fontSize:17,
+            color:'var(--ink)',
+            background:'var(--paper)',
+            border:'1px solid var(--hairline-strong)',
+            padding:'10px 12px',
+          }}
+        >
+          <option value="openai">OpenAI API</option>
+          <option value="anthropic">Anthropic / Claude API</option>
+        </select>
+      </label>
+      <p className="meta" style={{marginTop:10, lineHeight:1.45}}>
+        This only matters when the selected reading engine is API key.
+      </p>
+    </div>
+  );
+}
+
 function AISettings({ settings, state, onSettingsChange }) {
   const active = settings?.aiMode ?? 'auto';
   const reading = state?.reading;
@@ -180,60 +294,9 @@ function AISettings({ settings, state, onSettingsChange }) {
 
       <EngineStatus settings={settings} state={state}/>
 
-      {active === 'api-key' && (
-        <div style={{marginTop:16, padding:'14px', border:'1px solid var(--hairline)', background:'rgba(253,248,236,0.68)'}}>
-          <label style={{display:'block'}}>
-            <span className="eyebrow">Provider</span>
-            <select
-              value={settings?.apiProvider ?? 'anthropic'}
-              onChange={(event) => onSettingsChange({ apiProvider: event.target.value })}
-              style={{
-                width:'100%',
-                marginTop:6,
-                fontFamily:'var(--serif)',
-                fontSize:17,
-                color:'var(--ink)',
-                background:'var(--paper)',
-                border:'1px solid var(--hairline-strong)',
-                padding:'10px 12px',
-              }}
-            >
-              <option value="anthropic">Anthropic / Claude API</option>
-            </select>
-          </label>
-          <label style={{display:'block', marginTop:12}}>
-            <span className="eyebrow">API key</span>
-            <input
-              type="password"
-              value={settings?.apiKey ?? ''}
-              onChange={(event) => onSettingsChange({ apiKey: event.target.value })}
-              placeholder="sk-ant-..."
-              autoComplete="off"
-              style={{
-                width:'100%',
-                marginTop:6,
-                fontFamily:'var(--sans)',
-                fontSize:13,
-                color:'var(--ink)',
-                background:'var(--paper)',
-                border:'1px solid var(--hairline-strong)',
-                padding:'11px 12px',
-              }}
-            />
-          </label>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => onSettingsChange({ apiKey: '' })}
-            style={{marginTop:10, padding:'10px 14px', fontSize:11}}
-          >
-            Clear Key
-          </button>
-          <p className="meta" style={{marginTop:10, lineHeight:1.45}}>
-            Saved on this device. In API-key mode, the key is sent only to the reading endpoint to write the reading.
-          </p>
-        </div>
-      )}
+      <ProviderKeys settings={settings} onSettingsChange={onSettingsChange}/>
+
+      {active === 'api-key' && <ApiProviderChoice settings={settings} onSettingsChange={onSettingsChange}/>}
 
       <div style={{marginTop:16, paddingTop:14, borderTop:'1px solid var(--hairline)'}}>
         <div className="eyebrow">Current status</div>

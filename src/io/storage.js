@@ -79,20 +79,48 @@ export function saveUser(user) {
 }
 
 export function getSettings() {
-  return readJson(SETTINGS_KEY, {
+  const defaults = {
     schemaVersion: 1,
     aiMode: 'auto',
     localProviderOrder: ['codex'],
     model: 'gpt-5.5',
     reasoningEffort: 'xhigh',
     readingMode: 'quick-glance',
-    apiProvider: 'anthropic',
+    apiProvider: 'openai',
+    apiKeys: {
+      openai: '',
+      anthropic: '',
+    },
     apiKey: '',
-  });
+  };
+  const stored = readJson(SETTINGS_KEY, {});
+  const legacyProvider = stored.apiProvider ?? defaults.apiProvider;
+  const legacyKeys = stored.apiKey ? { [legacyProvider]: stored.apiKey } : {};
+  return {
+    ...defaults,
+    ...stored,
+    apiKeys: {
+      ...defaults.apiKeys,
+      ...(stored.apiKeys ?? {}),
+      ...legacyKeys,
+    },
+  };
 }
 
 export function saveSettings(settings) {
-  return writeJson(SETTINGS_KEY, { schemaVersion: 1, ...settings });
+  const provider = settings.apiProvider ?? 'openai';
+  const apiKeys = {
+    openai: '',
+    anthropic: '',
+    ...(settings.apiKeys ?? {}),
+  };
+  return writeJson(SETTINGS_KEY, {
+    schemaVersion: 1,
+    ...settings,
+    apiKeys,
+    // Keep the old single-key field populated for older cached settings code.
+    apiKey: apiKeys[provider] ?? '',
+  });
 }
 
 export function readingCacheKey(birthHash, date, aiMode = 'auto') {

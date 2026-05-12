@@ -9,7 +9,7 @@ const DEFAULT_ENTRY = {
 };
 
 export const SYMBOLIC_LEXICON = lexicon;
-export const SOURCE_METADATA_VERSION = 'local-synthesis-v3';
+export const SOURCE_METADATA_VERSION = 'local-synthesis-v4';
 
 export function systemLabels(ids = []) {
   return [...new Set(ids)]
@@ -51,12 +51,15 @@ export function readingSourceMetadata({ currentSky, signals } = {}) {
     'modern-western-astrology',
     'traditional-western-astrology',
     'lunar-cycle-practice',
+    'solar-cycle-practice',
     'somatic-reflective-practice',
     'moonturtle-editorial',
   ]);
 
   const addSystems = (entry) => entry?.systems?.forEach((id) => ids.add(id));
   addSystems(moonPhaseEntry(currentSky?.lunar?.phase));
+  addSystems(bodyEntry('Sun'));
+  addSystems(signEntry(currentSky?.lunar?.sunSign));
   addSystems(signEntry(currentSky?.lunar?.moonSign));
   for (const signal of signals?.topSignals ?? signals?.activationSignals ?? []) {
     addSystems(bodyEntry(signal.transitingBody));

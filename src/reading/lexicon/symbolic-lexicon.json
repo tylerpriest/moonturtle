@@ -19,6 +19,10 @@
       "label": "Lunar cycle practice",
       "role": "Waxing, full, waning, and dark Moon language for timing, release, integration, and renewal."
     },
+    "solar-cycle-practice": {
+      "label": "Solar cycle practice",
+      "role": "Sun-sign chapters, vitality, visibility, seasonal emphasis, and the longer arc of what is being lit."
+    },
     "somatic-reflective-practice": {
       "label": "Somatic reflective practice",
       "role": "Body and nervous-system metaphors used as non-medical reflection prompts."
@@ -77,7 +81,7 @@
       "shadow": ["drama", "pride", "needing applause"],
       "body": ["heart", "spine", "warmth"],
       "interpretiveBasis": "Fixed fire ruled by the Sun: creative vitality, visibility, pride, generosity, play, and the courage to be seen without performing.",
-      "systems": ["modern-western-astrology", "traditional-western-astrology", "somatic-reflective-practice", "moonturtle-editorial"]
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "solar-cycle-practice", "somatic-reflective-practice", "moonturtle-editorial"]
     },
     "Virgo": {
       "element": "Earth",
@@ -174,7 +178,7 @@
       "keywords": ["vitality", "identity", "visibility", "chapter"],
       "localAction": "express",
       "interpretiveBasis": "The Sun is treated as the larger chapter: vitality, identity, visibility, will, and what is being lit over a longer span.",
-      "systems": ["modern-western-astrology", "traditional-western-astrology"]
+      "systems": ["modern-western-astrology", "traditional-western-astrology", "solar-cycle-practice", "somatic-reflective-practice"]
     },
     "Mercury": {
       "keywords": ["language", "naming", "questions", "nerves"],

@@ -15,9 +15,11 @@ function timeZoneFor(user) {
 function cacheModeFor(settings) {
   const mode = aiMode(settings);
   if (mode !== 'api-key') return mode;
-  return settings?.apiKey?.trim()
-    ? `api-key:${settings.apiProvider ?? 'anthropic'}:configured`
-    : `api-key:${settings.apiProvider ?? 'anthropic'}:empty`;
+  const provider = settings.apiProvider ?? 'openai';
+  const key = settings.apiKeys?.[provider]?.trim() || settings.apiKey?.trim();
+  return key
+    ? `api-key:${provider}:configured`
+    : `api-key:${provider}:empty`;
 }
 
 function buildJournalEntry(user, sky, reading) {

@@ -170,7 +170,7 @@ function claudeMeta() {
 }
 
 function anthropicMeta() {
-  const modelId = process.env.MT_MODEL || 'claude-opus-4-7';
+  const modelId = process.env.MT_ANTHROPIC_MODEL || 'claude-opus-4-7';
   return {
     provider: 'anthropic',
     providerSurface: 'Anthropic API',
@@ -178,6 +178,27 @@ function anthropicMeta() {
     modelLabel: 'Claude',
     reasoningEffort: null,
     displayName: `Anthropic API · ${modelId}`,
+  };
+}
+
+function openAiModel(payload = {}) {
+  return process.env.MT_OPENAI_MODEL || process.env.MT_MODEL || payload.requestedModel || 'gpt-5.5';
+}
+
+function openAiReasoning(payload = {}) {
+  return process.env.MT_OPENAI_REASONING_EFFORT || process.env.MT_REASONING_EFFORT || payload.reasoningEffort || 'xhigh';
+}
+
+function openAiMeta(payload = {}) {
+  const modelId = openAiModel(payload);
+  const reasoningEffort = openAiReasoning(payload);
+  return {
+    provider: 'openai',
+    providerSurface: 'OpenAI API',
+    modelId,
+    modelLabel: modelId.toLowerCase().includes('gpt') ? modelId.toUpperCase() : modelId,
+    reasoningEffort,
+    displayName: `OpenAI API · ${modelId} · ${reasoningEffort} reasoning`,
   };
 }
 
@@ -257,7 +278,7 @@ async function runAnthropicApi(prompt, apiKey) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: process.env.MT_MODEL || 'claude-opus-4-7',
+      model: process.env.MT_ANTHROPIC_MODEL || 'claude-opus-4-7',
       max_tokens: 1400,
       temperature: 0.7,
       messages: [{ role: 'user', content: prompt }],
@@ -269,7 +290,48 @@ async function runAnthropicApi(prompt, apiKey) {
   return normaliseReading(extractJson(text), 'user-anthropic-key', anthropicMeta());
 }
 
-async function generateReading(payload, { apiKey, apiProvider = 'anthropic' } = {}) {
+function outputTextFromOpenAi(data) {
+  if (typeof data.output_text === 'string') return data.output_text;
+  const parts = [];
+  for (const item of data.output ?? []) {
+    for (const content of item.content ?? []) {
+      if (typeof content.text === 'string') parts.push(content.text);
+    }
+  }
+  return parts.join('\n');
+}
+
+async function runOpenAiApi(prompt, apiKey, payload = {}) {
+  const meta = openAiMeta(payload);
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: meta.modelId,
+      input: prompt,
+      max_output_tokens: 2200,
+      reasoning: {
+        effort: meta.reasoningEffort,
+      },
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'moonturtle_reading',
+          strict: true,
+          schema: READING_SCHEMA,
+        },
+      },
+    }),
+  });
+  if (!response.ok) throw new Error(`OpenAI returned ${response.status}.`);
+  const data = await response.json();
+  return normaliseReading(extractJson(outputTextFromOpenAi(data)), 'user-openai-key', meta);
+}
+
+async function generateReading(payload, { apiKey, apiProvider = 'openai' } = {}) {
   const prompt = promptFor(payload);
   const mode = payload.providerPreference ?? process.env.MOONTURTLE_LOCAL_PROVIDER ?? 'auto';
   const errors = [];
@@ -283,15 +345,16 @@ async function generateReading(payload, { apiKey, apiProvider = 'anthropic' } = 
         },
       };
     }
-    if (apiProvider !== 'anthropic') {
-      return {
-        error: {
-          code: 'api_provider_unsupported',
-          message: `${apiProvider} API-key mode is not wired in this local bridge yet.`,
-        },
-      };
-    }
     try {
+      if (apiProvider === 'openai') return await runOpenAiApi(prompt, apiKey, payload);
+      if (apiProvider !== 'anthropic') {
+        return {
+          error: {
+            code: 'api_provider_unsupported',
+            message: `${apiProvider} API-key mode is not wired in this local bridge yet.`,
+          },
+        };
+      }
       return await runAnthropicApi(prompt, apiKey);
     } catch (error) {
       return {
@@ -352,7 +415,7 @@ export function localReadingApiPlugin() {
         const apiKey = Array.isArray(rawApiKey) ? rawApiKey[0] : rawApiKey;
         const rawProvider = req.headers['x-moonturtle-provider'];
         const apiProvider = Array.isArray(rawProvider) ? rawProvider[0] : rawProvider;
-        const result = await generateReading(payload, { apiKey, apiProvider: apiProvider ?? 'anthropic' });
+        const result = await generateReading(payload, { apiKey, apiProvider: apiProvider ?? 'openai' });
         if (result.error) {
           json(res, result, 503);
           return;

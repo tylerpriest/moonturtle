@@ -425,6 +425,7 @@ function providerSourceMetadata(mode) {
       'Modern Western astrology',
       'Traditional Western astrology',
       'Lunar cycle practice',
+      'Solar cycle practice',
       'Somatic reflective practice',
       'MoonTurtle editorial synthesis',
       'AI language synthesis',
@@ -443,6 +444,7 @@ function fallbackSourceMetadata(reason = 'AI interpretation did not complete.') 
       'Modern Western astrology',
       'Traditional Western astrology',
       'Lunar cycle practice',
+      'Solar cycle practice',
       'Somatic reflective practice',
       'MoonTurtle local fallback',
     ],
@@ -465,6 +467,14 @@ function modelFromSettings(settings = {}) {
 
 function reasoningFromSettings(settings = {}) {
   return settings.reasoningEffort?.trim() || 'xhigh';
+}
+
+function providerKey(settings = {}) {
+  const provider = settings.apiProvider ?? 'openai';
+  const keyed = settings.apiKeys?.[provider]?.trim();
+  if (keyed) return keyed;
+  if (settings.apiKey?.trim()) return settings.apiKey.trim();
+  return '';
 }
 
 export function formatEngineLabel(engine = {}) {
@@ -505,7 +515,7 @@ export function engineForSettings(settings = {}) {
   }
 
   if (mode === 'api-key') {
-    const provider = settings.apiProvider ?? 'anthropic';
+    const provider = settings.apiProvider ?? 'openai';
     if (provider === 'openai') {
       const modelId = modelFromSettings(settings);
       const reasoningEffort = reasoningFromSettings(settings);
@@ -570,7 +580,7 @@ export function shouldAttemptProvider(settings = {}) {
   const mode = aiMode(settings);
   if (mode === 'local') return false;
   if (mode === 'codex' || mode === 'claude') return isLocalhost();
-  if (mode === 'api-key') return Boolean(settings.apiKey?.trim());
+  if (mode === 'api-key') return Boolean(providerKey(settings));
   const setting = import.meta.env.VITE_MOONTURTLE_USE_PROVIDER ?? 'auto';
   if (setting === 'true') return true;
   if (setting === 'false' || setting === 'off') return false;
@@ -669,9 +679,10 @@ export async function generateReading(input) {
     const controller = new AbortController();
     const timeout = globalThis.setTimeout(() => controller.abort(), providerTimeoutMs(mode));
     const headers = { 'Content-Type': 'application/json' };
-    if (input.settings?.aiMode === 'api-key' && input.settings?.apiKey?.trim()) {
-      headers['X-User-Provider-Key'] = input.settings.apiKey.trim();
-      headers['X-MoonTurtle-Provider'] = input.settings.apiProvider ?? 'anthropic';
+    const key = providerKey(input.settings);
+    if (input.settings?.aiMode === 'api-key' && key) {
+      headers['X-User-Provider-Key'] = key;
+      headers['X-MoonTurtle-Provider'] = input.settings.apiProvider ?? 'openai';
     }
 
     let response;
