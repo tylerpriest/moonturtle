@@ -183,7 +183,8 @@ export function TabBar({ active, onTab }) {
       icon: (
         <svg width="20" height="20" viewBox="0 0 20 20">
           <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="0.8"/>
-          <text x="10" y="14" textAnchor="middle" fontSize="11" fontFamily="serif" fontStyle="italic" fill="currentColor">i</text>
+          <circle cx="10" cy="6.6" r="0.9" fill="currentColor"/>
+          <line x1="10" y1="9" x2="10" y2="14" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
         </svg>
       )},
   ];

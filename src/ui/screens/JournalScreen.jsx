@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { getArchivedReading } from '../../reading/cache.js';
+import { buildReadingSharePayload } from '../../reading/share.js';
 import { MoonGlyph } from '../components/Primitives.jsx';
+import { ShareButton } from '../components/ShareButton.jsx';
 
 function groupJournal(journal) {
   const groups = [];
@@ -141,6 +143,9 @@ function DetailActivation({ activation, index }) {
 function ReadingDetail({ selected, onBack }) {
   const { entry, reading } = selected;
   const unavailable = !reading;
+  const sharePayload = unavailable
+    ? null
+    : buildReadingSharePayload({ reading, entry });
   return (
     <div style={{padding:'24px 26px 36px'}}>
       <button type="button" className="journal-back-button" onClick={onBack}>
@@ -160,6 +165,11 @@ function ReadingDetail({ selected, onBack }) {
         </span>
         {entry.preferred && <span className="chip">Preferred</span>}
       </div>
+      {!unavailable && (
+        <div className="reading-actions is-compact">
+          <ShareButton payload={sharePayload}/>
+        </div>
+      )}
 
       <div style={{height:18}}/>
       <div className={`card warm ${entry.isFallback ? 'is-fallback' : ''}`} style={{padding:'22px 20px'}}>
@@ -299,7 +309,7 @@ export function JournalScreen({ state }) {
               style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4, minWidth:34}}
             >
               <MoonGlyph size={16} illumPct={group.illumination} waxing={group.waxing}/>
-              <div style={{fontFamily:'var(--sans)', fontSize:9, color:'var(--ink-mute)', whiteSpace:'nowrap'}}>{compactDateLabel(group)}</div>
+              <div className="journal-ribbon-date">{compactDateLabel(group)}</div>
             </div>
           ))}
         </div>

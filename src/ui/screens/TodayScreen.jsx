@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { buildReadingSharePayload } from '../../reading/share.js';
 import { MoonGlyph, Sprig, Wordmark, OrnamentDiv } from '../components/Primitives.jsx';
+import { ShareButton } from '../components/ShareButton.jsx';
 
 const LOADING_STEPS = [
   ['sky', 'Sky'],
@@ -354,6 +356,9 @@ function ReadingSource({ reading, fromCache }) {
 export function TodayScreen({ state, user, onTab }) {
   const isReady = state?.status === 'ready' && state.sky && state.reading;
   const name = user?.displayName || state?.natal?.user?.name || 'there';
+  const sharePayload = isReady
+    ? buildReadingSharePayload({ reading: state.reading, sky: state.sky })
+    : null;
 
   return (
     <div style={{padding:'24px 26px 36px', position:'relative'}}>
@@ -402,16 +407,18 @@ export function TodayScreen({ state, user, onTab }) {
             </h1>
             <p className="body-prose">{state.reading.body}</p>
             <ReadingSource reading={state.reading} fromCache={state.fromCache}/>
-            {!state.reading.isFallback && state.refresh && (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={state.refresh}
-                style={{marginTop:14, padding:'10px 14px', fontSize:11}}
-              >
-                Create Another Variant
-              </button>
-            )}
+            <div className="reading-actions">
+              <ShareButton payload={sharePayload}/>
+              {!state.reading.isFallback && state.refresh && (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={state.refresh}
+                >
+                  Create Another Variant
+                </button>
+              )}
+            </div>
           </div>
 
           <OrnamentDiv/>
