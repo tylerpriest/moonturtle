@@ -5,8 +5,18 @@ const LOADING_STEPS = [
   ['sky', 'Sky'],
   ['natal', 'Natal'],
   ['signals', 'Signals'],
-  ['cache', 'Saved'],
-  ['writing', 'Writing'],
+  ['receipts', 'Receipts'],
+  ['interpretation', 'AI'],
+  ['validating', 'Check'],
+  ['saving', 'Saved'],
+];
+
+const THINKING_DETAILS = [
+  'Reading the top chart receipts.',
+  'Keeping only the loudest one to three signals.',
+  'Checking the Moon against natal anchors.',
+  'Turning the receipts into plain language.',
+  'Keeping agency and uncertainty intact.',
 ];
 
 function useElapsedSeconds(startedAt, active) {
@@ -28,7 +38,9 @@ function LoadingCard({ title = 'Calculating the sky.', loading, isError = false 
   const activeIndex = loading?.index ?? 1;
   const total = loading?.total ?? LOADING_STEPS.length;
   const progress = Math.max(12, Math.min(96, (activeIndex / total) * 100));
-  const stillWorking = elapsed >= 8 && loading?.step === 'writing';
+  const isThinking = loading?.step === 'interpretation' || loading?.step === 'validating';
+  const stillWorking = elapsed >= 8 && isThinking;
+  const thinkingDetail = THINKING_DETAILS[elapsed % THINKING_DETAILS.length];
 
   return (
     <div className="card warm" style={{padding:'26px 24px', overflow:'hidden'}}>
@@ -43,6 +55,23 @@ function LoadingCard({ title = 'Calculating the sky.', loading, isError = false 
 
       {!isError && (
         <>
+          <div className="status-surface" style={{marginTop:18}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12}}>
+              <div>
+                <div className="eyebrow">{loading?.statusLabel ?? 'Calculating locally'}</div>
+                <div className="status-engine">{loading?.engineLabel ?? 'Local calculation'}</div>
+              </div>
+              <div className="status-pill">{elapsed}s</div>
+            </div>
+            {isThinking && (
+              <div style={{marginTop:12}}>
+                <div className="thinking-line" aria-hidden="true"/>
+                <p className="meta" style={{marginTop:10, lineHeight:1.45, letterSpacing:'0.03em'}}>
+                  {thinkingDetail}
+                </p>
+              </div>
+            )}
+          </div>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginTop:18}}>
             <div className="meta">Step {activeIndex} of {total}</div>
             <div className="meta">{elapsed}s elapsed</div>
@@ -50,7 +79,7 @@ function LoadingCard({ title = 'Calculating the sky.', loading, isError = false 
           <div className="loading-track" aria-hidden="true" style={{marginTop:8}}>
             <div className="loading-fill" style={{width:`${progress}%`}}/>
           </div>
-          <div style={{display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:6, marginTop:12}}>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:5, marginTop:12}}>
             {LOADING_STEPS.map(([id, label], index) => {
               const complete = index + 1 <= activeIndex;
               return (
@@ -58,7 +87,8 @@ function LoadingCard({ title = 'Calculating the sky.', loading, isError = false 
                   textAlign:'center',
                   color: complete ? 'var(--terracotta)' : 'var(--ink-mute)',
                   opacity: complete ? 1 : 0.62,
-                  letterSpacing:'0.03em',
+                  letterSpacing:'0.01em',
+                  fontSize:9,
                 }}>
                   {label}
                 </div>
@@ -67,7 +97,7 @@ function LoadingCard({ title = 'Calculating the sky.', loading, isError = false 
           </div>
           {stillWorking && (
             <p className="meta" style={{marginTop:14, lineHeight:1.45, letterSpacing:'0.03em'}}>
-              Still writing. Provider readings can take a little longer; if the provider cannot finish, MoonTurtle will use the local symbolic reading.
+              Still writing. MoonTurtle will keep waiting clearly here; if the AI cannot finish, the local reading will be marked as a rough fallback.
             </p>
           )}
         </>
@@ -145,10 +175,81 @@ function ListCard({ title, color, items, marker = 'dot' }) {
 }
 
 function sourceLabel(reading) {
+  if (reading?.isFallback) return 'Rough local interpretation';
   if (reading?.sourceDetail?.label) return reading.sourceDetail.label;
   if (reading?.source === 'local-symbolic-engine') return 'Local symbolic engine';
   if (reading?.providerAttempted) return 'AI synthesis';
   return 'Reading engine';
+}
+
+function engineDisplay(readingOrStatus) {
+  return readingOrStatus?.engineLabel
+    ?? readingOrStatus?.engine?.displayName
+    ?? 'Local deterministic fallback';
+}
+
+function attemptMessage(reading) {
+  const attempt = reading?.aiAttempt;
+  if (!attempt) return null;
+  if (attempt.status === 'completed') return 'AI response completed and passed schema validation.';
+  if (attempt.status === 'skipped') return attempt.message ?? 'AI interpretation was skipped.';
+  return attempt.message ?? 'AI interpretation did not complete.';
+}
+
+function InterpretationStatus({ state }) {
+  const loading = state?.loading;
+  const status = loading ?? state?.interpretationStatus;
+  const elapsed = useElapsedSeconds(loading?.startedAt, Boolean(loading));
+  const reading = state?.reading;
+  const label = status?.statusLabel ?? (reading?.isFallback ? 'Fallback shown' : 'Saved');
+  const detail = status?.detail ?? attemptMessage(reading) ?? 'Reading status will appear here.';
+  const engine = status?.engineLabel ?? engineDisplay(reading);
+
+  return (
+    <div className={`status-surface ${!loading && reading?.isFallback ? 'is-fallback' : ''}`} style={{marginBottom:14}}>
+      <div style={{display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-start'}}>
+        <div>
+          <div className="eyebrow">Interpretation status</div>
+          <div className="status-title">{label}</div>
+        </div>
+        {loading ? <div className="status-pill">{elapsed}s</div> : <div className="status-pill">{state?.fromCache ? 'Saved' : 'Now'}</div>}
+      </div>
+      <div className="status-engine" style={{marginTop:8}}>{engine}</div>
+      <p className="meta" style={{marginTop:7, lineHeight:1.45, letterSpacing:'0.03em'}}>
+        {detail}
+      </p>
+    </div>
+  );
+}
+
+function FallbackNotice({ reading, onRetry }) {
+  if (!reading?.isFallback) return null;
+  const skipped = reading.aiAttempt?.status === 'skipped';
+  return (
+    <div className="fallback-banner">
+      <div className="eyebrow" style={{color:'var(--terracotta)'}}>Fallback shown</div>
+      <p className="body-prose" style={{fontSize:15, marginTop:5}}>
+        {skipped
+          ? 'AI interpretation is off. Showing rough local interpretation from calculated receipts.'
+          : 'AI interpretation did not complete. Showing local fallback from calculated receipts.'}
+      </p>
+      {reading.fallbackReason && (
+        <p className="meta" style={{marginTop:7, lineHeight:1.4}}>
+          {reading.fallbackReason}
+        </p>
+      )}
+      {onRetry && reading.providerAttempted && (
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={onRetry}
+          style={{marginTop:12, padding:'10px 14px', fontSize:11}}
+        >
+          Retry AI Interpretation
+        </button>
+      )}
+    </div>
+  );
 }
 
 function ReadingSource({ reading, fromCache }) {
@@ -160,6 +261,14 @@ function ReadingSource({ reading, fromCache }) {
       <div className="meta">
         {fromCache ? 'Saved for today' : 'Written for today'} · {sourceLabel(reading)}
       </div>
+      <div className="meta" style={{marginTop:5, lineHeight:1.45, letterSpacing:'0.03em'}}>
+        Engine: {reading?.engineLabel ?? engineDisplay(reading)}
+      </div>
+      {attemptMessage(reading) && (
+        <div className="meta" style={{marginTop:5, lineHeight:1.45, letterSpacing:'0.03em'}}>
+          {attemptMessage(reading)}
+        </div>
+      )}
       {detail && (
         <details style={{marginTop:8}}>
           <summary className="meta" style={{cursor:'pointer', color:'var(--terracotta)'}}>
@@ -213,6 +322,10 @@ export function TodayScreen({ state, user, onTab }) {
 
       <div style={{height:22}}/>
 
+      {(state?.loading || state?.reading || state?.interpretationStatus) && (
+        <InterpretationStatus state={state}/>
+      )}
+
       {!isReady && (
         <LoadingCard
           title={state?.status === 'error' ? 'The sky did not calculate cleanly.' : 'Calculating the sky.'}
@@ -227,6 +340,7 @@ export function TodayScreen({ state, user, onTab }) {
             <div style={{position:'absolute', top:-8, right:-8}}><Sprig size={70} flip opacity={0.18}/></div>
 
             <div className="section-label">Today's Reading</div>
+            <FallbackNotice reading={state.reading} onRetry={state.refresh}/>
 
             <div style={{display:'flex', alignItems:'center', gap:14, margin:'4px 0 18px'}}>
               <div style={{flexShrink:0}}><MoonGlyph size={42} illumPct={state.sky.lunar.illumination} waxing={state.sky.lunar.waxing}/></div>
@@ -241,6 +355,16 @@ export function TodayScreen({ state, user, onTab }) {
             </h1>
             <p className="body-prose">{state.reading.body}</p>
             <ReadingSource reading={state.reading} fromCache={state.fromCache}/>
+            {!state.reading.isFallback && state.refresh && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={state.refresh}
+                style={{marginTop:14, padding:'10px 14px', fontSize:11}}
+              >
+                Create Another Variant
+              </button>
+            )}
           </div>
 
           <OrnamentDiv/>

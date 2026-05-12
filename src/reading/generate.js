@@ -417,7 +417,7 @@ function providerPayload({ natalChart, currentSky, signals }) {
 
 function providerSourceMetadata(mode) {
   return {
-    label: mode === 'api-key' ? 'AI synthesis with your provider key' : 'AI synthesis',
+    label: mode === 'api-key' ? 'AI interpretation with your provider key' : 'AI interpretation',
     metadataVersion: SOURCE_METADATA_VERSION,
     summary: 'The astronomy and ranked signals are calculated locally first, then an AI provider writes fuller prose from those receipts.',
     systems: [
@@ -433,8 +433,133 @@ function providerSourceMetadata(mode) {
   };
 }
 
+function fallbackSourceMetadata(reason = 'AI interpretation did not complete.') {
+  return {
+    label: 'Rough local interpretation',
+    metadataVersion: SOURCE_METADATA_VERSION,
+    summary: 'This is generated on device from calculated chart receipts. It is a fallback, not the full model-written interpretation.',
+    systems: [
+      'True-sky sidereal astronomy',
+      'Modern Western astrology',
+      'Traditional Western astrology',
+      'Lunar cycle practice',
+      'Somatic reflective practice',
+      'MoonTurtle local fallback',
+    ],
+    caveat: `${reason} MoonTurtle is showing the local deterministic fallback so the receipts are still useful.`,
+  };
+}
+
+function makeReadingId(dateKey) {
+  const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${dateKey}:${random}`;
+}
+
 export function aiMode(settings = {}) {
   return settings.aiMode ?? 'auto';
+}
+
+function modelFromSettings(settings = {}) {
+  return settings.model?.trim() || 'gpt-5.5';
+}
+
+function reasoningFromSettings(settings = {}) {
+  return settings.reasoningEffort?.trim() || 'xhigh';
+}
+
+export function formatEngineLabel(engine = {}) {
+  if (engine.displayName) return engine.displayName;
+  const parts = [engine.providerSurface, engine.modelId].filter(Boolean);
+  if (engine.reasoningEffort) parts.push(`${engine.reasoningEffort} reasoning`);
+  return parts.join(' · ') || 'Local deterministic fallback';
+}
+
+export function engineForSettings(settings = {}) {
+  const mode = aiMode(settings);
+  if (mode === 'local') {
+    return {
+      mode,
+      provider: 'local',
+      providerSurface: 'Local deterministic fallback',
+      modelId: 'local-symbolic-engine',
+      modelLabel: 'Local deterministic',
+      reasoningEffort: null,
+      displayName: 'Local deterministic fallback',
+      isLocal: true,
+      isAi: false,
+    };
+  }
+
+  if (mode === 'claude') {
+    return {
+      mode,
+      provider: 'claude',
+      providerSurface: 'Claude Code local subscription',
+      modelId: 'subscription-default',
+      modelLabel: 'Claude',
+      reasoningEffort: null,
+      displayName: 'Claude Code local subscription · Claude',
+      isLocalSubscription: true,
+      isAi: true,
+    };
+  }
+
+  if (mode === 'api-key') {
+    const provider = settings.apiProvider ?? 'anthropic';
+    if (provider === 'openai') {
+      const modelId = modelFromSettings(settings);
+      const reasoningEffort = reasoningFromSettings(settings);
+      return {
+        mode,
+        provider,
+        providerSurface: 'OpenAI API',
+        modelId,
+        modelLabel: modelId.toLowerCase().includes('gpt') ? modelId.toUpperCase() : modelId,
+        reasoningEffort,
+        displayName: `OpenAI API · ${modelId} · ${reasoningEffort} reasoning`,
+        isAi: true,
+      };
+    }
+    const modelId = settings.model?.trim() && !settings.model.includes('gpt')
+      ? settings.model.trim()
+      : 'claude-opus-4-7';
+    return {
+      mode,
+      provider,
+      providerSurface: 'Anthropic API',
+      modelId,
+      modelLabel: 'Claude',
+      reasoningEffort: null,
+      displayName: `Anthropic API · ${modelId}`,
+      isAi: true,
+    };
+  }
+
+  const modelId = modelFromSettings(settings);
+  const reasoningEffort = reasoningFromSettings(settings);
+  return {
+    mode,
+    provider: 'codex',
+    providerSurface: 'Codex local subscription',
+    modelId,
+    modelLabel: modelId.toLowerCase().includes('gpt') ? modelId.toUpperCase() : modelId,
+    reasoningEffort,
+    displayName: `Codex local subscription · ${modelId} · ${reasoningEffort} reasoning`,
+    isLocalSubscription: true,
+    isAi: true,
+  };
+}
+
+function engineFromRemote(remote, settings) {
+  if (remote?.providerMeta) {
+    return {
+      ...engineForSettings(settings),
+      ...remote.providerMeta,
+      displayName: formatEngineLabel(remote.providerMeta),
+      isAi: true,
+    };
+  }
+  return engineForSettings(settings);
 }
 
 function isLocalhost() {
@@ -453,17 +578,94 @@ export function shouldAttemptProvider(settings = {}) {
 }
 
 function providerTimeoutMs(mode) {
-  const fallback = mode === 'api-key' ? 60000 : 26000;
+  const fallback = mode === 'api-key' ? 90000 : 65000;
   const configured = Number(import.meta.env.VITE_MOONTURTLE_PROVIDER_TIMEOUT_MS ?? fallback);
   return Number.isFinite(configured) && configured > 0 ? configured : fallback;
 }
 
+function aiAttempt({ status, engine, startedAt, code, message, detail } = {}) {
+  const completedAt = new Date().toISOString();
+  return {
+    status,
+    engine,
+    startedAt,
+    completedAt,
+    durationMs: startedAt ? Date.now() - Date.parse(startedAt) : null,
+    code,
+    message,
+    detail,
+  };
+}
+
+function finalizeReading(reading, input, overrides = {}) {
+  const dateKey = input.currentSky.localDateKey;
+  const engine = overrides.engine ?? engineForSettings(input.settings);
+  const isFallback = Boolean(overrides.isFallback);
+  const mode = input.settings?.readingMode ?? 'quick-glance';
+  const modeLabel = mode === 'full' ? 'Full reading' : 'Quick glance';
+  return {
+    ...reading,
+    readingId: reading.readingId ?? makeReadingId(dateKey),
+    dateKey,
+    generatedAt: reading.generatedAt ?? new Date().toISOString(),
+    readingMode: mode,
+    modeLabel,
+    engine,
+    engineLabel: isFallback ? 'Local deterministic fallback' : formatEngineLabel(engine),
+    modelLabel: isFallback ? 'Local deterministic' : engine.modelLabel,
+    isFallback,
+    fallbackReason: overrides.fallbackReason ?? null,
+    providerAttempted: overrides.providerAttempted ?? false,
+    aiAttempt: overrides.aiAttempt ?? null,
+    sourceDetail: overrides.sourceDetail ?? reading.sourceDetail,
+  };
+}
+
+function fallbackReading(local, input, { startedAt, code, message, detail, providerAttempted = true } = {}) {
+  const engine = engineForSettings(input.settings);
+  const reason = message ?? (providerAttempted ? 'AI interpretation did not complete.' : 'AI interpretation is disabled in Settings.');
+  return finalizeReading(local, input, {
+    isFallback: true,
+    fallbackReason: reason,
+    providerAttempted,
+    engine: {
+      mode: 'local',
+      provider: 'local',
+      providerSurface: 'Local deterministic fallback',
+      modelId: 'local-symbolic-engine',
+      modelLabel: 'Local deterministic',
+      reasoningEffort: null,
+      displayName: 'Local deterministic fallback',
+      attemptedEngine: engine,
+      isLocal: true,
+      isAi: false,
+    },
+    aiAttempt: aiAttempt({
+      status: providerAttempted ? 'failed' : 'skipped',
+      engine,
+      startedAt,
+      code,
+      message: reason,
+      detail,
+    }),
+    sourceDetail: fallbackSourceMetadata(reason),
+  });
+}
+
 export async function generateReading(input) {
   const local = localReading(input);
-  if (!shouldAttemptProvider(input.settings)) return local;
+  const mode = aiMode(input.settings);
+  const startedAt = new Date().toISOString();
+  if (!shouldAttemptProvider(input.settings)) {
+    return fallbackReading(local, input, {
+      startedAt,
+      code: 'provider_not_attempted',
+      message: mode === 'local' ? 'AI interpretation is disabled in Settings.' : 'No configured AI provider is available here.',
+      providerAttempted: false,
+    });
+  }
 
   try {
-    const mode = aiMode(input.settings);
     const controller = new AbortController();
     const timeout = globalThis.setTimeout(() => controller.abort(), providerTimeoutMs(mode));
     const headers = { 'Content-Type': 'application/json' };
@@ -481,24 +683,60 @@ export async function generateReading(input) {
         body: JSON.stringify({
           ...providerPayload(input),
           providerPreference: mode,
-          providerOrder: input.settings?.localProviderOrder ?? ['codex', 'claude'],
+          providerOrder: mode === 'auto' ? ['codex'] : (input.settings?.localProviderOrder ?? ['codex']),
+          requestedModel: input.settings?.model ?? 'gpt-5.5',
+          reasoningEffort: input.settings?.reasoningEffort ?? 'xhigh',
         }),
       });
     } finally {
       globalThis.clearTimeout(timeout);
     }
-    if (!response.ok) return { ...local, providerAttempted: true };
+    if (!response.ok) {
+      let errorPayload = null;
+      try {
+        errorPayload = await response.json();
+      } catch {
+        errorPayload = null;
+      }
+      const error = errorPayload?.error ?? {};
+      return fallbackReading(local, input, {
+        startedAt,
+        code: error.code ?? `provider_http_${response.status}`,
+        message: error.message ?? `AI provider returned ${response.status}.`,
+        detail: error.detail,
+      });
+    }
     const remote = await response.json();
-    if (!remote?.headline || !remote?.body) return { ...local, providerAttempted: true };
-    return {
+    if (!remote?.headline || !remote?.body) {
+      return fallbackReading(local, input, {
+        startedAt,
+        code: 'provider_invalid_schema',
+        message: 'AI response did not match the reading schema.',
+      });
+    }
+    const engine = engineFromRemote(remote, input.settings);
+    return finalizeReading({
       ...local,
       ...remote,
       source: remote.source ?? 'provider',
       sourceDetail: providerSourceMetadata(mode),
+    }, input, {
+      isFallback: false,
       providerAttempted: true,
-      dateKey: local.dateKey,
-    };
-  } catch {
-    return { ...local, providerAttempted: true };
+      engine,
+      aiAttempt: aiAttempt({
+        status: 'completed',
+        engine,
+        startedAt,
+        code: 'provider_completed',
+        message: 'AI interpretation completed and passed schema validation.',
+      }),
+    });
+  } catch (error) {
+    return fallbackReading(local, input, {
+      startedAt,
+      code: error?.name === 'AbortError' ? 'provider_timeout' : 'provider_error',
+      message: error?.name === 'AbortError' ? 'AI interpretation timed out.' : (error?.message ?? 'AI interpretation did not complete.'),
+    });
   }
 }

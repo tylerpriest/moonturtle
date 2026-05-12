@@ -17,12 +17,14 @@ export function getJournal(birthHash) {
 
 export function appendJournalEntry(birthHash, entry) {
   const existing = getJournal(birthHash);
+  const readingId = entry.readingId ?? `${entry.dateKey}:${Date.now()}`;
   const next = [
     {
       ...entry,
+      readingId,
       savedAt: new Date().toISOString(),
     },
-    ...existing.filter((item) => item.dateKey !== entry.dateKey),
-  ].slice(0, 60);
+    ...existing.filter((item) => (item.readingId ?? item.dateKey) !== readingId),
+  ].slice(0, 90);
   return writeJson(journalKey(birthHash), next);
 }

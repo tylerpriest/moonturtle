@@ -82,8 +82,10 @@ export function getSettings() {
   return readJson(SETTINGS_KEY, {
     schemaVersion: 1,
     aiMode: 'auto',
-    localProviderOrder: ['codex', 'claude'],
-    model: 'subscription-default',
+    localProviderOrder: ['codex'],
+    model: 'gpt-5.5',
+    reasoningEffort: 'xhigh',
+    readingMode: 'quick-glance',
     apiProvider: 'anthropic',
     apiKey: '',
   });

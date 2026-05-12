@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { SYMBOLIC_LEXICON } from '../../reading/lexicon/index.js';
+import { engineForSettings, formatEngineLabel } from '../../reading/generate.js';
 
 function MethodSection({ num, title, body }) {
   return (
@@ -42,13 +44,13 @@ const AI_OPTIONS = [
     id: 'auto',
     label: 'Auto',
     title: 'Codex first',
-    body: 'Uses your local Codex login first, then Claude if Codex is unavailable.',
+    body: 'Uses your local Codex login with gpt-5.5 and xhigh reasoning. Choose Claude explicitly to switch engines.',
   },
   {
     id: 'codex',
     label: 'Codex',
     title: 'Codex only',
-    body: 'Use your logged-in Codex CLI for localhost readings.',
+    body: 'Use your logged-in Codex CLI for localhost readings: gpt-5.5 with xhigh reasoning.',
   },
   {
     id: 'claude',
@@ -60,23 +62,79 @@ const AI_OPTIONS = [
     id: 'api-key',
     label: 'API key',
     title: 'Your key',
-    body: 'Use a saved provider API key for readings.',
+    body: 'Use a saved provider API key for readings when the app is not using local subscriptions.',
   },
   {
     id: 'local',
     label: 'Local',
     title: 'No AI',
-    body: 'Use the built-in symbolic engine only.',
+    body: 'Use the built-in symbolic engine only. This is clearly marked as a rough local fallback.',
   },
 ];
 
-function sourceLabel(source, providerAttempted) {
+function sourceLabel(reading) {
+  const source = reading?.source;
+  const providerAttempted = reading?.providerAttempted;
+  if (reading?.isFallback) return 'Rough local fallback';
   if (source === 'local-codex-subscription') return 'Codex subscription';
   if (source === 'local-claude-subscription') return 'Claude subscription';
   if (source === 'user-anthropic-key') return 'Your Anthropic API key';
   if (source === 'anthropic-provider') return 'Hosted Claude API';
   if (providerAttempted) return 'Local symbolic fallback';
   return 'Local symbolic engine';
+}
+
+function useElapsedSeconds(startedAt, active) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!active) return undefined;
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [active, startedAt]);
+
+  if (!active || !startedAt) return 0;
+  return Math.max(0, Math.floor((now - startedAt) / 1000));
+}
+
+function EngineStatus({ settings, state }) {
+  const loading = state?.loading;
+  const configuredEngine = engineForSettings(settings);
+  const reading = state?.reading;
+  const engine = loading?.engine ?? reading?.engine ?? configuredEngine;
+  const elapsed = useElapsedSeconds(loading?.startedAt, Boolean(loading));
+  const statusLabel = loading?.statusLabel
+    ?? state?.interpretationStatus?.statusLabel
+    ?? (reading?.isFallback ? 'Fallback shown' : 'Saved');
+  const detail = loading?.detail
+    ?? state?.interpretationStatus?.detail
+    ?? reading?.aiAttempt?.message
+    ?? 'The next reading will use the selected engine after local receipts are ready.';
+
+  return (
+    <div className={`status-surface ${!loading && reading?.isFallback ? 'is-fallback' : ''}`} style={{marginTop:16}}>
+      <div style={{display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-start'}}>
+        <div>
+          <div className="eyebrow">Interpretation status</div>
+          <div className="status-title">{statusLabel}</div>
+        </div>
+        <div className="status-pill">{loading ? `${elapsed}s` : (state?.fromCache ? 'Saved' : 'Current')}</div>
+      </div>
+      <div style={{marginTop:10}}>
+        <div className="eyebrow">Engine in use</div>
+        <div className="status-engine">{formatEngineLabel(engine)}</div>
+      </div>
+      <p className="meta" style={{marginTop:8, lineHeight:1.45, letterSpacing:'0.03em'}}>
+        {detail}
+      </p>
+      {reading?.aiAttempt?.detail?.length > 0 && (
+        <p className="meta" style={{marginTop:8, lineHeight:1.45, letterSpacing:'0.03em'}}>
+          Last provider detail: {reading.aiAttempt.detail.join(' | ')}
+        </p>
+      )}
+    </div>
+  );
 }
 
 function AISettings({ settings, state, onSettingsChange }) {
@@ -119,6 +177,8 @@ function AISettings({ settings, state, onSettingsChange }) {
           );
         })}
       </div>
+
+      <EngineStatus settings={settings} state={state}/>
 
       {active === 'api-key' && (
         <div style={{marginTop:16, padding:'14px', border:'1px solid var(--hairline)', background:'rgba(253,248,236,0.68)'}}>
@@ -178,10 +238,10 @@ function AISettings({ settings, state, onSettingsChange }) {
       <div style={{marginTop:16, paddingTop:14, borderTop:'1px solid var(--hairline)'}}>
         <div className="eyebrow">Current status</div>
         <div style={{fontFamily:'var(--serif)', fontSize:17, color:'var(--ink)', marginTop:4}}>
-          {state?.status === 'calculating' ? 'Writing today’s reading...' : `Last reading: ${sourceLabel(reading?.source, reading?.providerAttempted)}`}
+          {state?.status === 'calculating' ? 'Writing today’s reading...' : `Last reading: ${sourceLabel(reading)}`}
         </div>
         <p className="meta" style={{marginTop:6, lineHeight:1.45}}>
-          Switches apply immediately and use a separate daily cache for each mode.
+          Switches apply immediately and use a separate daily cache for each mode. Failed AI attempts are kept as fallback metadata, not successful AI readings.
         </p>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
-const DEFAULT_MODEL_TIMEOUT_MS = 20000;
+const DEFAULT_MODEL_TIMEOUT_MS = 65000;
 
 const READING_SCHEMA = {
   type: 'object',
@@ -112,10 +112,11 @@ Input:
 ${JSON.stringify(payload, null, 2)}`;
 }
 
-function normaliseReading(reading, source) {
+function normaliseReading(reading, source, providerMeta) {
   return {
     ...reading,
     source,
+    providerMeta,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -134,6 +135,52 @@ function modelTimeoutMs() {
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_MODEL_TIMEOUT_MS;
 }
 
+function codexModel(payload = {}) {
+  return process.env.MT_MODEL || process.env.MOONTURTLE_CODEX_MODEL || payload.requestedModel || 'gpt-5.5';
+}
+
+function codexReasoning(payload = {}) {
+  return process.env.MT_REASONING_EFFORT || process.env.MOONTURTLE_CODEX_REASONING || payload.reasoningEffort || 'xhigh';
+}
+
+function codexMeta(payload = {}) {
+  const modelId = codexModel(payload);
+  const reasoningEffort = codexReasoning(payload);
+  return {
+    provider: 'codex',
+    providerSurface: 'Codex local subscription',
+    modelId,
+    modelLabel: modelId.toLowerCase().includes('gpt') ? modelId.toUpperCase() : modelId,
+    reasoningEffort,
+    displayName: `Codex local subscription · ${modelId} · ${reasoningEffort} reasoning`,
+    isLocalSubscription: true,
+  };
+}
+
+function claudeMeta() {
+  return {
+    provider: 'claude',
+    providerSurface: 'Claude Code local subscription',
+    modelId: process.env.CLAUDE_MODEL || 'subscription-default',
+    modelLabel: 'Claude',
+    reasoningEffort: null,
+    displayName: 'Claude Code local subscription · Claude',
+    isLocalSubscription: true,
+  };
+}
+
+function anthropicMeta() {
+  const modelId = process.env.MT_MODEL || 'claude-opus-4-7';
+  return {
+    provider: 'anthropic',
+    providerSurface: 'Anthropic API',
+    modelId,
+    modelLabel: 'Claude',
+    reasoningEffort: null,
+    displayName: `Anthropic API · ${modelId}`,
+  };
+}
+
 function isTimeoutError(error) {
   return error?.killed || error?.code === 'ETIMEDOUT' || /timed out/i.test(error?.message ?? '');
 }
@@ -144,7 +191,7 @@ function providerOrder(payload, mode, runners) {
   const clean = requested.filter((name, index) => (
     runners[name] && requested.indexOf(name) === index
   ));
-  return clean.length ? clean : ['codex', 'claude'];
+  return clean.length ? clean : ['codex'];
 }
 
 async function runClaude(prompt) {
@@ -164,14 +211,16 @@ async function runClaude(prompt) {
     timeout: modelTimeoutMs(),
     maxBuffer: 1024 * 1024 * 4,
   });
-  return normaliseReading(extractJson(stdout), 'local-claude-subscription');
+  return normaliseReading(extractJson(stdout), 'local-claude-subscription', claudeMeta());
 }
 
-async function runCodex(prompt) {
+async function runCodex(prompt, payload = {}) {
   if (!(await commandExists('codex'))) throw new Error('Codex CLI is not installed.');
   const dir = await mkdtemp(join(tmpdir(), 'moonturtle-codex-'));
   const schemaPath = join(dir, 'reading.schema.json');
   const outputPath = join(dir, 'reading.json');
+  const modelId = codexModel(payload);
+  const reasoningEffort = codexReasoning(payload);
   try {
     await writeFile(schemaPath, JSON.stringify(READING_SCHEMA));
     await execFileAsync('codex', [
@@ -179,6 +228,10 @@ async function runCodex(prompt) {
       '--skip-git-repo-check',
       '--sandbox',
       'read-only',
+      '--model',
+      modelId,
+      '-c',
+      `model_reasoning_effort="${reasoningEffort}"`,
       '--output-schema',
       schemaPath,
       '--output-last-message',
@@ -189,7 +242,7 @@ async function runCodex(prompt) {
       timeout: modelTimeoutMs(),
       maxBuffer: 1024 * 1024 * 4,
     });
-    return normaliseReading(extractJson(await readFile(outputPath, 'utf8')), 'local-codex-subscription');
+    return normaliseReading(extractJson(await readFile(outputPath, 'utf8')), 'local-codex-subscription', codexMeta(payload));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -213,10 +266,10 @@ async function runAnthropicApi(prompt, apiKey) {
   if (!response.ok) throw new Error(`Anthropic returned ${response.status}.`);
   const data = await response.json();
   const text = data.content?.map((part) => part.text ?? '').join('\n') ?? '';
-  return normaliseReading(extractJson(text), 'user-anthropic-key');
+  return normaliseReading(extractJson(text), 'user-anthropic-key', anthropicMeta());
 }
 
-async function generateReading(payload, { apiKey } = {}) {
+async function generateReading(payload, { apiKey, apiProvider = 'anthropic' } = {}) {
   const prompt = promptFor(payload);
   const mode = payload.providerPreference ?? process.env.MOONTURTLE_LOCAL_PROVIDER ?? 'auto';
   const errors = [];
@@ -227,6 +280,14 @@ async function generateReading(payload, { apiKey } = {}) {
         error: {
           code: 'api_key_missing',
           message: 'API key mode needs a saved key.',
+        },
+      };
+    }
+    if (apiProvider !== 'anthropic') {
+      return {
+        error: {
+          code: 'api_provider_unsupported',
+          message: `${apiProvider} API-key mode is not wired in this local bridge yet.`,
         },
       };
     }
@@ -243,8 +304,8 @@ async function generateReading(payload, { apiKey } = {}) {
   }
 
   const runners = {
-    claude: runClaude,
-    codex: runCodex,
+    claude: () => runClaude(prompt),
+    codex: () => runCodex(prompt, payload),
   };
   const order = providerOrder(payload, mode, runners);
 
@@ -289,7 +350,9 @@ export function localReadingApiPlugin() {
 
         const rawApiKey = req.headers['x-user-provider-key'];
         const apiKey = Array.isArray(rawApiKey) ? rawApiKey[0] : rawApiKey;
-        const result = await generateReading(payload, { apiKey });
+        const rawProvider = req.headers['x-moonturtle-provider'];
+        const apiProvider = Array.isArray(rawProvider) ? rawProvider[0] : rawProvider;
+        const result = await generateReading(payload, { apiKey, apiProvider: apiProvider ?? 'anthropic' });
         if (result.error) {
           json(res, result, 503);
           return;

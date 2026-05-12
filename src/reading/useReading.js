@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getJournal } from './cache.js';
 import { appendJournalEntry, getCachedReading, setCachedReading } from './cache.js';
-import { aiMode, generateReading } from './generate.js';
+import { aiMode, engineForSettings, formatEngineLabel, generateReading } from './generate.js';
 import { SOURCE_METADATA_VERSION } from './lexicon/index.js';
 
 function placeFor(user) {
@@ -22,6 +22,7 @@ function cacheModeFor(settings) {
 
 function buildJournalEntry(user, sky, reading) {
   return {
+    readingId: reading.readingId,
     dateKey: sky.localDateKey,
     localDate: sky.localDate,
     headline: reading.headline,
@@ -30,52 +31,92 @@ function buildJournalEntry(user, sky, reading) {
     waxing: sky.lunar.waxing,
     moonSign: sky.lunar.moonSign,
     source: reading.source,
+    sourceLabel: reading.sourceDetail?.label,
+    readingMode: reading.readingMode ?? 'quick-glance',
+    modeLabel: reading.modeLabel ?? 'Quick glance',
+    engine: reading.engine,
+    engineLabel: reading.engineLabel,
+    modelLabel: reading.modelLabel,
+    isFallback: Boolean(reading.isFallback),
+    preferred: !reading.isFallback,
+    fallbackReason: reading.fallbackReason,
+    aiAttempt: reading.aiAttempt,
+    generatedAt: reading.generatedAt,
     birthHash: user.birthHash,
   };
 }
 
 function cachedReadingIsCurrent(reading) {
-  return reading?.sourceDetail?.metadataVersion === SOURCE_METADATA_VERSION;
+  return (
+    reading?.sourceDetail?.metadataVersion === SOURCE_METADATA_VERSION
+    && Boolean(reading?.readingId)
+    && Boolean(reading?.engine)
+    && typeof reading?.isFallback === 'boolean'
+  );
 }
 
-function loadingState(step, startedAt) {
+function loadingState(step, startedAt, settings) {
+  const engine = engineForSettings(settings);
+  const modelLabel = engine.modelLabel ?? 'GPT-5.5';
   const stages = {
     sky: {
       index: 1,
+      statusLabel: 'Calculating locally',
       title: 'Calculating the sky',
       detail: 'Finding today’s Moon, phase, illumination, and local sky.',
     },
     natal: {
       index: 2,
+      statusLabel: 'Calculating locally',
       title: 'Checking your natal chart',
       detail: 'Mapping the chart into MoonTurtle’s true-sky framework.',
     },
     signals: {
       index: 3,
+      statusLabel: 'Calculating locally',
       title: 'Choosing the loudest signals',
       detail: 'Ranking today’s strongest contacts to your chart.',
     },
-    cache: {
+    receipts: {
       index: 4,
-      title: 'Checking today’s reading',
-      detail: 'Looking for a saved reading for this mode.',
+      statusLabel: 'Receipts ready',
+      title: 'Receipts ready',
+      detail: 'The sky, natal chart, houses, and loudest signals are ready.',
     },
-    writing: {
+    interpretation: {
       index: 5,
-      title: 'Writing the reading',
-      detail: 'Composing the reading from the sky receipts.',
+      statusLabel: engine.isAi ? `Waiting for ${modelLabel}` : 'Fallback shown',
+      title: engine.isAi ? `${modelLabel} is thinking` : 'Preparing local fallback',
+      detail: engine.isAi
+        ? `${modelLabel} is writing from your chart receipts.`
+        : 'AI is off, so MoonTurtle is using the rough local interpretation.',
+    },
+    validating: {
+      index: 6,
+      statusLabel: 'Validating response',
+      title: 'Validating the reading',
+      detail: 'Checking the response shape, source metadata, and fallback status.',
+    },
+    saving: {
+      index: 7,
+      statusLabel: 'Saved',
+      title: 'Saving the reading',
+      detail: 'Storing this reading variant in the journal.',
     },
   };
 
   return {
     step,
-    total: 5,
+    total: 7,
     startedAt,
+    engine,
+    engineLabel: formatEngineLabel(engine),
     ...stages[step],
   };
 }
 
 export function useReading(user, settings) {
+  const [runRequest, setRunRequest] = useState({ id: 0, bypassCache: false });
   const [state, setState] = useState({
     status: user ? 'calculating' : 'idle',
     error: null,
@@ -86,6 +127,7 @@ export function useReading(user, settings) {
     fromCache: false,
     journal: [],
     loading: null,
+    interpretationStatus: null,
   });
 
   const computeInput = useMemo(() => {
@@ -109,11 +151,13 @@ export function useReading(user, settings) {
       const startedAt = Date.now();
       const setLoading = (step) => {
         if (!alive) return;
+        const loading = loadingState(step, startedAt, settings);
         setState((prev) => ({
           ...prev,
           status: 'calculating',
           error: null,
-          loading: loadingState(step, startedAt),
+          loading,
+          interpretationStatus: loading,
         }));
       };
 
@@ -130,11 +174,24 @@ export function useReading(user, settings) {
         const signals = rankSignals(natal, sky);
         const journal = getJournal(user.birthHash);
         const cacheMode = computeInput.aiMode;
-        setLoading('cache');
+        setLoading('receipts');
         const cached = getCachedReading(user.birthHash, sky.localDateKey, cacheMode);
 
-        if (cached && cachedReadingIsCurrent(cached)) {
+        if (!runRequest.bypassCache && cached && cachedReadingIsCurrent(cached)) {
           if (!alive) return;
+          const interpretationStatus = cached.isFallback
+            ? {
+                statusLabel: 'Fallback shown',
+                detail: cached.fallbackReason ?? 'Local deterministic fallback is being shown.',
+                engine: cached.engine,
+                engineLabel: cached.engineLabel,
+              }
+            : {
+                statusLabel: 'Saved',
+                detail: 'Reading loaded from today’s saved variant.',
+                engine: cached.engine,
+                engineLabel: cached.engineLabel,
+              };
           setState({
             status: 'ready',
             error: null,
@@ -145,13 +202,18 @@ export function useReading(user, settings) {
             fromCache: true,
             journal,
             loading: null,
+            interpretationStatus,
           });
           return;
         }
 
-        setLoading('writing');
+        setLoading('interpretation');
         const reading = await generateReading({ user, natalChart: natal, currentSky: sky, signals, settings });
-        setCachedReading(user.birthHash, sky.localDateKey, reading, cacheMode);
+        setLoading('validating');
+        if (!reading.isFallback || cacheMode === 'local') {
+          setCachedReading(user.birthHash, sky.localDateKey, reading, cacheMode);
+        }
+        setLoading('saving');
         const nextJournal = appendJournalEntry(user.birthHash, buildJournalEntry(user, sky, reading));
 
         if (!alive) return;
@@ -165,6 +227,19 @@ export function useReading(user, settings) {
           fromCache: false,
           journal: nextJournal,
           loading: null,
+          interpretationStatus: reading.isFallback
+            ? {
+                statusLabel: 'Fallback shown',
+                detail: reading.fallbackReason ?? 'AI interpretation did not complete. Local fallback is displayed.',
+                engine: reading.engine,
+                engineLabel: reading.engineLabel,
+              }
+            : {
+                statusLabel: 'Saved',
+                detail: 'AI reading completed, validated, and saved to the journal.',
+                engine: reading.engine,
+                engineLabel: reading.engineLabel,
+              },
         });
       } catch (error) {
         if (!alive) return;
@@ -173,6 +248,12 @@ export function useReading(user, settings) {
           status: 'error',
           error,
           loading: null,
+          interpretationStatus: {
+            statusLabel: 'Fallback shown',
+            detail: error?.message ?? 'The reading pipeline stopped before a fallback could be built.',
+            engine: engineForSettings(settings),
+            engineLabel: formatEngineLabel(engineForSettings(settings)),
+          },
         }));
       }
     }
@@ -181,7 +262,11 @@ export function useReading(user, settings) {
     return () => {
       alive = false;
     };
-  }, [computeInput, user]);
+  }, [computeInput, runRequest, settings, user]);
 
-  return state;
+  function refresh() {
+    setRunRequest((prev) => ({ id: prev.id + 1, bypassCache: true }));
+  }
+
+  return { ...state, refresh };
 }

@@ -5,9 +5,37 @@ function ribbonFromJournal(journal) {
   return journal.slice(0, 14).reverse().map((entry) => entry.illumination);
 }
 
+function groupJournal(journal) {
+  const groups = [];
+  const byDate = new Map();
+  for (const entry of journal ?? []) {
+    const key = entry.dateKey ?? entry.localDate ?? 'unknown';
+    if (!byDate.has(key)) {
+      const group = {
+        dateKey: key,
+        localDate: entry.localDate ?? key,
+        illumination: entry.illumination,
+        waxing: entry.waxing,
+        moonSign: entry.moonSign,
+        entries: [],
+      };
+      byDate.set(key, group);
+      groups.push(group);
+    }
+    byDate.get(key).entries.push(entry);
+  }
+  return groups;
+}
+
+function modeBadge(entry) {
+  if (entry.isFallback) return 'Fallback · Local deterministic';
+  return `${entry.modeLabel ?? 'Quick glance'} · ${entry.modelLabel ?? 'GPT-5.5'}`;
+}
+
 export function JournalScreen({ state }) {
   const journal = state?.journal ?? [];
   const ribbon = ribbonFromJournal(journal);
+  const groups = groupJournal(journal);
 
   return (
     <div style={{padding:'24px 26px 36px'}}>
@@ -45,20 +73,49 @@ export function JournalScreen({ state }) {
       )}
 
       <div style={{display:'flex', flexDirection:'column', gap:14}}>
-        {journal.map((entry, index) => (
-          <div key={entry.dateKey} className={index === 0 ? 'card warm' : 'card'} style={{padding:'16px 18px', display:'flex', gap:14, alignItems:'flex-start'}}>
+        {groups.map((group, index) => (
+          <div key={group.dateKey} className={index === 0 ? 'card warm' : 'card'} style={{padding:'16px 18px', display:'flex', gap:14, alignItems:'flex-start'}}>
             <div style={{flexShrink:0, paddingTop:3}}>
-              <MoonGlyph size={32} illumPct={entry.illumination} waxing={entry.waxing}/>
+              <MoonGlyph size={32} illumPct={group.illumination} waxing={group.waxing}/>
             </div>
             <div style={{flex:1}}>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:10, marginBottom:3}}>
-                <div className="eyebrow">{entry.localDate}</div>
-                {index === 0 && <div className="chip" style={{padding:'2px 7px', fontSize:9}}>Today</div>}
+                <div className="eyebrow">{group.localDate}</div>
+                <div style={{display:'flex', gap:6, flexWrap:'wrap', justifyContent:'flex-end'}}>
+                  {group.dateKey === state?.sky?.localDateKey && <div className="chip" style={{padding:'2px 7px', fontSize:9}}>Today</div>}
+                  {group.entries.length > 1 && <div className="chip" style={{padding:'2px 7px', fontSize:9}}>{group.entries.length} variants</div>}
+                </div>
               </div>
-              <div style={{fontFamily:'var(--serif)', fontSize:16, fontStyle:'italic', color:'var(--ink)', marginBottom:3}}>
-                {entry.headline}
+              <div className="meta" style={{marginBottom:10}}>Moon in {group.moonSign} · {group.illumination}% lit</div>
+              <div style={{display:'flex', flexDirection:'column', gap:10}}>
+                {group.entries.map((entry, variantIndex) => (
+                  <div
+                    key={entry.readingId ?? `${entry.dateKey}-${variantIndex}`}
+                    style={{
+                      paddingTop: variantIndex === 0 ? 0 : 10,
+                      borderTop: variantIndex === 0 ? 'none' : '1px solid var(--hairline)',
+                    }}
+                  >
+                    <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:4}}>
+                      <span className="chip" style={{
+                        padding:'2px 7px',
+                        fontSize:9,
+                        color: entry.isFallback ? 'var(--terracotta)' : 'var(--ink-soft)',
+                        borderColor: entry.isFallback ? 'rgba(176,74,38,0.45)' : 'var(--hairline-strong)',
+                      }}>
+                        {modeBadge(entry)}
+                      </span>
+                      {entry.preferred && <span className="chip" style={{padding:'2px 7px', fontSize:9}}>Preferred</span>}
+                    </div>
+                    <div style={{fontFamily:'var(--serif)', fontSize:16, fontStyle:'italic', color:'var(--ink)', marginBottom:3}}>
+                      {entry.headline}
+                    </div>
+                    <div className="meta" style={{lineHeight:1.4, letterSpacing:'0.03em'}}>
+                      {entry.engineLabel ?? entry.sourceLabel ?? 'Reading engine'}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="meta">Moon in {entry.moonSign} · {entry.illumination}% lit</div>
             </div>
           </div>
         ))}
