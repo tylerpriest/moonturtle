@@ -6,10 +6,11 @@ This repo is a static MoonTurtle prototype plus a strong implementation plan. St
 
 1. Run `npm install`.
 2. Run `npm run build`.
-3. Read `docs/phase-1-build-contract.md`, `docs/astronomy-spec.md`, `docs/signal-ranking.md`, `docs/data-privacy-storage.md`, `docs/failure-states.md`, `docs/prompt-ops.md`, and `docs/testing-checklist.md`.
-4. Read `docs/plan.md`, `docs/design-rules.md`, `docs/master-prompt.md`, `docs/seed-users.md`, and `docs/open-source-astrology-tools.md`.
+3. Read `docs/README.md`, `docs/product-brief.md`, `docs/prd.md`, `docs/jtbd-user-stories.md`, and `docs/task-backlog.md`.
+4. Read `docs/phase-1-build-contract.md`, `docs/astronomy-spec.md`, `docs/signal-ranking.md`, `docs/data-privacy-storage.md`, `docs/failure-states.md`, `docs/prompt-ops.md`, and `docs/testing-checklist.md`.
+5. Read `docs/plan.md`, `docs/design-rules.md`, `docs/master-prompt.md`, `docs/seed-users.md`, and `docs/open-source-astrology-tools.md`.
 5. Treat Phase 0 as complete. Do not move the app back to the old flat layout.
-6. Begin Phase 1 with `src/domain/astronomy.js`, `src/domain/schema.js`, and focused regression tests for Tyler and Ali.
+6. Check the current implementation before following older phase-history language; several Phase 1 modules now exist and need verification more than scaffolding.
 
 ## Current layout
 

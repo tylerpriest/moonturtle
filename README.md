@@ -5,15 +5,16 @@ A sidereal astrology app. Reading-first, receipts-second. *Meaningful enough to 
 ## For the next agent — start here
 
 1. **Read [`GETTING_STARTED.md`](GETTING_STARTED.md).** It gives the literal next steps for a fresh agent.
-2. **Read [`docs/phase-1-build-contract.md`](docs/phase-1-build-contract.md).** This is the implementation scope and done criteria.
-3. **Read [`docs/plan.md`](docs/plan.md) end-to-end.** It contains design principles, module boundaries, phases, file-by-file change list, verification steps, and known risks. Don't start coding without it.
-4. **Read [`docs/astronomy-spec.md`](docs/astronomy-spec.md), [`docs/signal-ranking.md`](docs/signal-ranking.md), and [`docs/data-privacy-storage.md`](docs/data-privacy-storage.md).** These are the deterministic product contracts.
-5. **Read [`docs/failure-states.md`](docs/failure-states.md), [`docs/prompt-ops.md`](docs/prompt-ops.md), and [`docs/testing-checklist.md`](docs/testing-checklist.md).**
-6. **Read [`docs/master-prompt.md`](docs/master-prompt.md).** This is the source of voice truth.
-7. **Read [`docs/seed-users.md`](docs/seed-users.md).** Tyler and Ali are the two astronomical regression fixtures and voice exemplars. Every change must pass for both.
-8. **Read [`docs/design-rules.md`](docs/design-rules.md).** This is the canonical UI/design guide.
-9. **Skim [`docs/open-source-astrology-tools.md`](docs/open-source-astrology-tools.md).** Tooling options and why the current recommendation exists.
-10. **Skim [`docs/design-source/`](docs/design-source/).** The original Claude Design HTML/JSX handoff and the chat transcript. Visual reference.
+2. **Read [`docs/README.md`](docs/README.md), [`docs/product-brief.md`](docs/product-brief.md), [`docs/prd.md`](docs/prd.md), [`docs/jtbd-user-stories.md`](docs/jtbd-user-stories.md), and [`docs/task-backlog.md`](docs/task-backlog.md).** These explain the product, users, requirements, and work queue.
+3. **Read [`docs/phase-1-build-contract.md`](docs/phase-1-build-contract.md).** This is the implementation scope and done criteria.
+4. **Read [`docs/plan.md`](docs/plan.md) end-to-end.** It contains design principles, module boundaries, phases, file-by-file change list, verification steps, and known risks. Don't start coding without it.
+5. **Read [`docs/astronomy-spec.md`](docs/astronomy-spec.md), [`docs/signal-ranking.md`](docs/signal-ranking.md), and [`docs/data-privacy-storage.md`](docs/data-privacy-storage.md).** These are the deterministic product contracts.
+6. **Read [`docs/failure-states.md`](docs/failure-states.md), [`docs/prompt-ops.md`](docs/prompt-ops.md), and [`docs/testing-checklist.md`](docs/testing-checklist.md).**
+7. **Read [`docs/master-prompt.md`](docs/master-prompt.md).** This is the source of voice truth.
+8. **Read [`docs/seed-users.md`](docs/seed-users.md).** Tyler and Ali are the two astronomical regression fixtures and voice exemplars. Every change must pass for both.
+9. **Read [`docs/design-rules.md`](docs/design-rules.md).** This is the canonical UI/design guide.
+10. **Skim [`docs/open-source-astrology-tools.md`](docs/open-source-astrology-tools.md).** Tooling options and why the current recommendation exists.
+11. **Skim [`docs/design-source/`](docs/design-source/).** The original Claude Design HTML/JSX handoff and the chat transcript. Visual reference.
 
 ## Current state
 
